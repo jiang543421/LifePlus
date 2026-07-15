@@ -22,7 +22,7 @@
         <mybatis-plus.version>3.5.6</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
         <flyway.version>10.20.0</flyway.version>
-        <testcontainers.version>1.20.2</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencyManagement>
