@@ -131,10 +131,10 @@ public class AuthService {
 
         Long userId = Long.valueOf(claims.getSubject());
 
-        // 3. 查 DB 行；不存在（已被撤销）→ 1401
+        // 3. 查 DB 行；不存在或已撤销 → 1401（防 refresh 重放）
         String oldHash = sha256Hex(req.refreshToken());
         RefreshToken stored = refreshTokenMapper.findByHash(oldHash);
-        if (stored == null) {
+        if (stored == null || stored.getRevokedAt() != null) {
             throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "refresh revoked or unknown");
         }
 

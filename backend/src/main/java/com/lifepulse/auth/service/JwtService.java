@@ -14,6 +14,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * JWT 签发与解析服务（plan §3-C，A-007）。
@@ -94,8 +95,10 @@ public class JwtService {
     private String issueToken(Long userId, String typ, Duration ttl) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + ttl.toMillis());
+        // jti：每次唯一 UUID，避免毫秒级同一秒内连续签发产生相同 token
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(exp)
                 .claim("typ", typ)
