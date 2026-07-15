@@ -31,12 +31,21 @@ public abstract class AbstractIntegrationTest {
      */
     static final String LOCAL_REDIS_URL = "redis://:123456@localhost:6379";
 
+    /**
+     * MySQL 容器：启用 {@code withReuse(true)}，必须在 mvn 命令里加
+     * {@code -Dorg.testcontainers.reuse.enable=true}（或在 ~/.testcontainers.properties 设置
+     * {@code tc.reuse.enable=true}）才能跨 Spring 测试上下文复用。
+     *
+     * <p>复用是为了规避 1.21.x 下第二个 IT class 的 Spring context 重建时
+     * 旧容器被 stop、新 HikariPool 抢连失败的问题。
+     */
     @Container
     @SuppressWarnings("resource") // managed by Testcontainers
     public static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("lifepulse")
             .withUsername("lp")
-            .withPassword("lp_dev_only");
+            .withPassword("lp_dev_only")
+            .withReuse(true);
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
