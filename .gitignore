@@ -10,4 +10,3 @@ dist/
 *.log
 .DS_Store
 backend/.mvn/wrapper/maven-wrapper.jar
-frontend/pnpm-lock.yaml
