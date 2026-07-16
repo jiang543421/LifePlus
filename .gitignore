@@ -5,6 +5,7 @@ dist/
 .idea/
 .vscode/
 .claude/
+coverage/
 *.iml
 .env
 .env.local
