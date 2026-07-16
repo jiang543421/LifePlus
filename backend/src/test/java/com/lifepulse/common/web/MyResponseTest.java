@@ -36,4 +36,33 @@ class MyResponseTest {
         assertThat(r.message()).isEqualTo("invalid credentials");
         assertThat(r.data()).isNull();
     }
+
+    @Test
+    void ok_pullsTraceIdFromMdcWhenPresent() {
+        // Arrange
+        org.slf4j.MDC.put("traceId", "fixed-trace-id-1");
+
+        try {
+            // Act
+            MyResponse<String> r = MyResponse.ok("payload");
+
+            // Assert
+            assertThat(r.traceId()).isEqualTo("fixed-trace-id-1");
+        } finally {
+            org.slf4j.MDC.clear();
+        }
+    }
+
+    @Test
+    void error_pullsTraceIdFromMdcWhenPresent() {
+        org.slf4j.MDC.put("traceId", "fixed-trace-id-2");
+
+        try {
+            MyResponse<Void> r = MyResponse.error(1401, "refresh invalid");
+
+            assertThat(r.traceId()).isEqualTo("fixed-trace-id-2");
+        } finally {
+            org.slf4j.MDC.clear();
+        }
+    }
 }
