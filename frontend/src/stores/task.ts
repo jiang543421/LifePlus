@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia';
 import { taskApi } from '@/api/task';
-import type { TaskFilter, TaskListItem, TaskListResponse } from '@/types';
+import type {
+  TaskCreateRequest,
+  TaskFilter,
+  TaskListItem,
+  TaskListResponse,
+  TaskResponse,
+  TaskStatus,
+} from '@/types';
 import { ApiError } from '@/api/http';
 
 interface TaskState {
@@ -11,6 +18,8 @@ interface TaskState {
   total: number;
   loading: boolean;
   error: string | null;
+  /** 最近一次失败的 ApiError.code（用于视图 toast 选择文案）；null = 无业务码。 */
+  errorCode: number | null;
 }
 
 /**
@@ -31,6 +40,7 @@ export const useTaskStore = defineStore('task', {
     total: 0,
     loading: false,
     error: null,
+    errorCode: null,
   }),
   getters: {
     /** 任意过滤项非空 → true（page/size 单独不算过滤）。 */
@@ -53,18 +63,53 @@ export const useTaskStore = defineStore('task', {
     async fetchList(): Promise<TaskListResponse | null> {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       try {
         const resp = await taskApi.list(this.filter);
         this.list = resp.items;
         this.total = resp.total;
         return resp;
       } catch (e: unknown) {
-        this.error = e instanceof ApiError ? e.message : 'fetch tasks failed';
+        if (e instanceof ApiError) {
+          this.error = e.message;
+          this.errorCode = e.code;
+        } else {
+          this.error = 'fetch tasks failed';
+          this.errorCode = null;
+        }
         // 失败保留旧 list（避免空闪烁）；调用方按需清空
         return null;
       } finally {
         this.loading = false;
       }
+    },
+
+    /**
+     * 创建任务（POST /tasks）。成功后由视图触发 refresh() 拉新列表。
+     * 失败抛 ApiError / Error（与 fetchList 行为一致 — 调用方 toast）。
+     */
+    async create(req: TaskCreateRequest): Promise<TaskResponse> {
+      this.error = null;
+      this.errorCode = null;
+      return taskApi.create(req);
+    },
+
+    /**
+     * 状态切换（PATCH /tasks/{id}/status）。错误向上抛，由视图 toast。
+     */
+    async patchStatus(id: number, status: TaskStatus): Promise<void> {
+      this.error = null;
+      this.errorCode = null;
+      await taskApi.patchStatus(id, { status });
+    },
+
+    /**
+     * 软删（DELETE /tasks/{id}）。错误向上抛。
+     */
+    async remove(id: number): Promise<void> {
+      this.error = null;
+      this.errorCode = null;
+      await taskApi.delete(id);
     },
 
     /**
@@ -89,6 +134,7 @@ export const useTaskStore = defineStore('task', {
       this.list = null;
       this.total = 0;
       this.error = null;
+      this.errorCode = null;
       this.filter = { page: 1, size: this.filter.size };
     },
   },

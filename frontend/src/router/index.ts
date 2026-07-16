@@ -6,6 +6,9 @@ const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true, title: '登录' } },
   { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { public: true, title: '注册' } },
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { title: '数字生活' } },
+  // spec §04 §2：/tasks /tasks/:id 都需登录；:id 限定数字避免 catch-all 误吞。
+  { path: '/tasks', name: 'tasks', component: () => import('@/views/TaskListView.vue'), meta: { title: '任务' } },
+  { path: '/tasks/:id(\\d+)', name: 'task-detail', component: () => import('@/views/TaskDetailView.vue'), meta: { title: '任务详情' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

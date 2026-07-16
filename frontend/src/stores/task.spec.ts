@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useTaskStore } from './task';
 import { ApiError } from '@/api/http';
-import type { TaskListResponse } from '@/types';
+import type { TaskListResponse, TaskResponse, TaskStatus } from '@/types';
 
 vi.mock('@/api/task', () => ({
   taskApi: {
@@ -38,6 +38,7 @@ describe('useTaskStore / state default', () => {
     expect(store.total).toBe(0);
     expect(store.loading).toBe(false);
     expect(store.error).toBeNull();
+    expect(store.errorCode).toBeNull();
   });
 
   it('hasFilter 在无过滤项时为 false', () => {
@@ -152,6 +153,79 @@ describe('useTaskStore / clear', () => {
     expect(store.list).toBeNull();
     expect(store.total).toBe(0);
     expect(store.error).toBeNull();
+    expect(store.errorCode).toBeNull();
     expect(store.filter).toEqual({ page: 1, size: 20 });
+  });
+});
+
+describe('useTaskStore / mutations (create / patchStatus / remove)', () => {
+  beforeEach(() => {
+    vi.mocked(taskApi.create).mockReset();
+    vi.mocked(taskApi.patchStatus).mockReset();
+    vi.mocked(taskApi.delete).mockReset();
+  });
+
+  it('create：成功转发请求并清空旧 error/errorCode', async () => {
+    const created: TaskResponse = {
+      id: 7,
+      userId: 1,
+      planId: null,
+      title: '买牛奶',
+      status: 0 as TaskStatus,
+      priority: 2,
+      dueDate: null,
+      tag: null,
+      createdAt: '2026-07-16T10:00:00+08:00',
+      updatedAt: '2026-07-16T10:00:00+08:00',
+    };
+    vi.mocked(taskApi.create).mockResolvedValue(created);
+
+    const store = useTaskStore();
+    store.error = '旧错';
+    store.errorCode = 1003;
+    const resp = await store.create({ title: '买牛奶', priority: 2 });
+    expect(resp).toEqual(created);
+    expect(store.error).toBeNull();
+    expect(store.errorCode).toBeNull();
+    expect(taskApi.create).toHaveBeenCalledWith({ title: '买牛奶', priority: 2 });
+  });
+
+  it('patchStatus：转发 id + status', async () => {
+    vi.mocked(taskApi.patchStatus).mockResolvedValue(undefined);
+
+    const store = useTaskStore();
+    await store.patchStatus(7, 1);
+    expect(taskApi.patchStatus).toHaveBeenCalledWith(7, { status: 1 });
+  });
+
+  it('remove：失败抛错不写 errorCode（视图负责 toast）', async () => {
+    vi.mocked(taskApi.delete).mockRejectedValueOnce(new ApiError(1003, '无权操作'));
+
+    const store = useTaskStore();
+    await expect(store.remove(99)).rejects.toBeInstanceOf(ApiError);
+    // mutation action 设计上不写 errorCode（与 fetchList 不同）— 调用方 try/catch 自行处理
+    expect(store.errorCode).toBeNull();
+  });
+});
+
+describe('useTaskStore / fetchList errorCode 写入', () => {
+  it('ApiError 时 errorCode 同步写入', async () => {
+    vi.mocked(taskApi.list).mockRejectedValueOnce(new ApiError(1004, '资源不存在'));
+    const store = useTaskStore();
+    await store.fetchList();
+    expect(store.error).toBe('资源不存在');
+    expect(store.errorCode).toBe(1004);
+  });
+
+  it('成功时 errorCode 重置为 null', async () => {
+    vi.mocked(taskApi.list).mockRejectedValueOnce(new ApiError(1004, 'no'));
+    const store = useTaskStore();
+    await store.fetchList();
+    expect(store.errorCode).toBe(1004);
+
+    vi.mocked(taskApi.list).mockResolvedValueOnce(mockResp(0, []));
+    await store.fetchList();
+    expect(store.errorCode).toBeNull();
+    expect(store.error).toBeNull();
   });
 });
