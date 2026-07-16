@@ -147,7 +147,7 @@
 
             <!--
                 JaCoCo 覆盖率门禁（plan §6.1：mvn verify 中 JaCoCo 强制）。
-                规则：com.lifepulse.auth.service 包行覆盖 ≥ 80%，不达标则构建失败。
+                规则：com.lifepulse.{auth,task}.service 包行覆盖 ≥ 80%，不达标则构建失败。
                 其他包（web / repository / common / security）由各自规范保证，不在此硬性收口。
             -->
             <plugin>
@@ -180,6 +180,7 @@
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>com.lifepulse.auth.service</include>
+                                        <include>com.lifepulse.task.service</include>
                                     </includes>
                                     <limits>
                                         <limit>

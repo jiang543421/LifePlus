@@ -6,6 +6,7 @@ import com.lifepulse.auth.service.AuthService;
 import com.lifepulse.auth.service.JwtService;
 import com.lifepulse.common.security.RateLimiter;
 import com.lifepulse.security.UserContext;
+import com.lifepulse.task.repository.TaskMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,6 +53,7 @@ class SmokeTest {
 
     @MockBean private UserMapper userMapper;
     @MockBean private RefreshTokenMapper refreshTokenMapper;
+    @MockBean private TaskMapper taskMapper;  // Phase 2-C：TaskService 装配依赖
     @MockBean private RateLimiter rateLimiter;
     @MockBean private JwtService jwtService;
     @MockBean private AuthService authService;
