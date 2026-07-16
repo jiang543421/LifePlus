@@ -6,32 +6,41 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Phase 1.2-E · 最小 SecurityConfig 桥（plan §7）。
+ * Phase 1.3-B · 全量 SecurityConfig（plan §3-B / §6.4）。
  *
- * <p>理由：{@code @SpringBootTest} 拉起完整 Spring 上下文时若无
- * {@link SecurityFilterChain} bean，Spring Security 6 默认链对所有
- * 请求要求 Basic Auth，IT 与未来的 MockMvc 测试都会被 401 拦截。
- *
- * <p>本配置只做「放行 /auth/** + /actuator/health + stateless + 禁 CSRF」，
- * 不引入 JwtAuthFilter 与 UserContext（1.3 落地）。
- *
- * <p>{@code // TODO(phase=1.3): replace with JwtAuthFilter chain + /users/me auth}
+ * <p>替换 1.2-E 占位桥：
+ * <ul>
+ *   <li>matcher 路径修正为 {@code /api/v1/auth/**}（1.2 写成 {@code /auth/**}
+ *       与 controller 实际路径不一致，导致所有 auth 端点被拦 401）</li>
+ *   <li>注册 {@link JwtAuthFilter} 到 {@code UsernamePasswordAuthenticationFilter}
+ *       之前；认证入口点统一为 {@link JwtAuthEntryPoint}，输出信封 1002/401</li>
+ *   <li>显式 {@code formLogin.disable()} / {@code httpBasic.disable()} /
+ *       {@code logout.disable()} 避免 Spring 默认 Basic 弹窗与 logout filter</li>
+ * </ul>
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthFilter jwtAuthFilter,
+                                                   JwtAuthEntryPoint jwtAuthEntryPoint) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+                .logout(logout -> logout.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/actuator/health").permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/actuator/health").permitAll()
                         .anyRequest().authenticated()
-                );
+                )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthEntryPoint))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
