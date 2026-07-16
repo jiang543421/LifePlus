@@ -13,5 +13,7 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         include: ['src/**/*.{test,spec}.ts'],
+        // 1.4-A 阶段尚无测试；后续 sub-stage (B/C/D) 逐文件补齐。
+        passWithNoTests: true,
     },
 });
