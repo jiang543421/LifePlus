@@ -199,10 +199,23 @@
                 Failsafe 集成测试插件（plan §6.4 / §6.5：IT 必须 Testcontainers，禁止依赖外部 DB）。
                 *IT.java 默认由 failsafe 在 integration-test 阶段执行，verify 阶段确认结果；
                 单测（*Test.java）继续由 surefire 在 test 阶段跑。两条链路互不干扰。
+
+                Testcontainers 容器复用（plan §13 已知问题）：
+                - ~/.testcontainers.properties 加 testcontainers.reuse.enable=true
+                - AbstractIntegrationTest 用 withReuse(true) 声明
+                - 本插件配 reuseForks=true + forkCount=1，让所有 IT class 共用一个
+                  forked JVM，共享静态 MYSQL 容器实例；否则每个 IT class 一个 JVM，
+                  静态字段每次重置，容器反复创建销毁，第二个 IT class 的 Spring 上下文
+                  在 30s 连接超时内拿不到 ready 容器，HikariPool 报
+                  "Connection is not available"。
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                </configuration>
                 <executions>
                     <execution>
                         <id>integration-test</id>
