@@ -20,13 +20,15 @@ const ruleResults = computed(() =>
 );
 const passwordOk = computed(() => ruleResults.value.every((r) => r.ok));
 
+// 规则不使用 trigger:'blur'，确保 ElForm.validate() 立即对所有字段生效
+// （trigger 在未触发时会让 validate() 误报 invalid）。
 const rules: FormRules<typeof form> = {
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
+    { required: true, message: '请输入邮箱' },
+    { type: 'email', message: '邮箱格式不正确' },
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
+    { required: true, message: '请输入密码' },
     {
       validator: (_rule, value, cb) => {
         if (!value || !passwordOk.value) {
@@ -35,24 +37,20 @@ const rules: FormRules<typeof form> = {
           cb();
         }
       },
-      trigger: 'blur',
     },
   ],
-  nickname: [{ max: 32, message: '昵称最多 32 字符', trigger: 'blur' }],
+  nickname: [{ max: 32, message: '昵称最多 32 字符' }],
 };
 
 async function submit(): Promise<void> {
   if (!formRef.value) return;
-  // 防御性预校验：ElForm.validate 在 jsdom 下时序不可靠；这里独立校验
-  // email + 密码规则，校验失败直接早退，不发请求。ElForm.validate 仍会执行以渲染错误提示。
+  // 防御性预校验（独立于 ElForm.validate）：email 格式 + 密码规则都满足才调 API。
   const emailOk = !!form.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
   const passwordOk = PASSWORD_RULES.every((r) => r.test(form.password));
   if (!emailOk || !passwordOk) {
     await formRef.value.validate().catch(() => undefined);
     return;
   }
-  const valid = await formRef.value.validate().catch(() => false);
-  if (!valid) return;
   submitting.value = true;
   try {
     await auth.register(form.email, form.password, form.nickname || undefined);

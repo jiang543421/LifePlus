@@ -83,7 +83,12 @@ http.interceptors.response.use(
   async (err: AxiosError<ApiEnvelope<unknown>>) => {
     const code = err.response?.data?.code;
     const status = err.response?.status;
-    if (code === AuthErrorCode.BadCredentials || status === 401) {
+    // 只对已登录请求触发 refresh：未登录（refreshToken=null）时 /auth/login 返 1002
+    // 是用户输入错误，不该走 refresh 路径；否则会把"邮箱或密码错误"误吐成"会话过期"。
+    if (
+      (code === AuthErrorCode.BadCredentials || status === 401) &&
+      useAuthStore().refreshToken
+    ) {
       const newToken = await handle401();
       if (newToken && err.config) {
         err.config.headers.set('Authorization', `Bearer ${newToken}`);

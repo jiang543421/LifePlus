@@ -13,7 +13,9 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         include: ['src/**/*.{test,spec}.ts'],
-        // 1.4-A 阶段尚无测试；后续 sub-stage (B/C/D) 逐文件补齐。
+        // E2E（Playwright）文件用 @playwright/test，不走 vitest；CLAUDE.md §3 把
+        // E2E 目录放在 src/e2e/，这里显式排除避免 vitest 误扫。
+        exclude: ['src/e2e/**', 'node_modules/**'],
         passWithNoTests: true,
     },
 });
