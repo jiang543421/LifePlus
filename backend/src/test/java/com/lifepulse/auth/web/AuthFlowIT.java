@@ -9,7 +9,6 @@ import com.lifepulse.auth.dto.RefreshRequest;
 import com.lifepulse.auth.dto.RegisterRequest;
 import com.lifepulse.it.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -41,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>refresh 重放：旧 refresh 再用 → 1401</li>
  *   <li>login 限流：同 IP+email 第 6 次 → 1006</li>
  *   <li>register 限流：同 IP 第 4 次 → 1006（{@code REGISTER_RL_MAX=3}）</li>
- *   <li>跨用户防御：MVP1 不引入 task，留 {@code @Disabled} TODO</li>
+ *   <li>跨用户防御：迁移至 {@code TaskFlowIT.crossUserDefense_...}（Phase 2-D）</li>
  * </ol>
  *
  * <p>基础设施（继承 {@link AbstractIntegrationTest}）：
@@ -248,18 +247,13 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.message").value("register rate limit exceeded"));
     }
 
-    // ---------- case 5: 跨用户防御（MVP1 不引入 task，留 TODO） ----------
+    // ---------- case 5: 跨用户防御（Phase 2-D 由 TaskFlowIT 覆盖） ----------
 
     /**
-     * 跨用户越权防御：MVP1 不引入 task 跨用户场景，Phase 2 任务模块上线后
-     * 落地为 {@code GET /api/v1/tasks/{id}} 路径的 1003 拦截测试。
-     * 现阶段仅留桩，不写实际断言。
+     * 跨用户越权防御的实际测试已迁至 {@code TaskFlowIT.crossUserDefense_...}，
+     * 本类保留位置作为占位（Phase 1 stub 已删除；后续如需在 auth 层加 token 越权场景
+     * 再补独立 case）。
      */
-    @Test
-    @Disabled("MVP1 无 task 跨用户场景；Phase 2 任务模块落地后补 case 覆盖 1003")
-    void crossUserDefense_getOtherUsersTask_returns1003() {
-        // TODO Phase 2: 注册 userA + userB，userB 访问 userA 的 task → 1403
-    }
 
     // ---------- helpers ----------
 
