@@ -43,7 +43,9 @@ public class JwtService {
     }
 
     /**
-     * 启动校验：HS256 密钥字节数 ≥32（CLAUDE.md §7.2）。
+     * 启动校验：HS256 密钥字节数 ≥32（CLAUDE.md §7.2）；
+     * 额外拒绝含 {@code replace-me}（大小写不敏感）的占位符串，防止误部署
+     * 使用 {@code application.yml} 的 dev 默认密钥（CLAUDE.md §7.1 + Review C-3）。
      * 显式公开以便单测直接调用；{@code @PostConstruct} 在 Spring 上下文同样会触发。
      */
     @PostConstruct
@@ -56,6 +58,12 @@ public class JwtService {
         if (bytes < AuthConstants.JWT_SECRET_MIN_BYTES) {
             throw new IllegalStateException(
                     "lp.jwt.secret must be at least 32 bytes, got " + bytes);
+        }
+        if (secret.toLowerCase().contains("replace-me")) {
+            throw new IllegalStateException(
+                    "lp.jwt.secret appears to be a placeholder ('replace-me' substring); "
+                            + "set LP_JWT_SECRET env var with a real ≥32-byte secret "
+                            + "(CLAUDE.md §7.1)");
         }
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
