@@ -23,4 +23,9 @@ public final class PlanConstants {
     public static final int DEFAULT_REMINDER_MIN = 15;
     /** reminder_min 校验上界（DTO @Max 用）。单位：分钟。 */
     public static final int MAX_REMINDER_MIN = 7 * 24 * 60; // 一周
+
+    // ---- 分页默认值与上限（spec §5.4 GET /plans）----
+    public static final int DEFAULT_PAGE = 1;
+    public static final int DEFAULT_PAGE_SIZE = 20;
+    public static final int MAX_PAGE_SIZE = 100;
 }
