@@ -68,6 +68,10 @@ class TaskServiceTest {
     @Test
     void create_setsUserIdFromContext_persistsAndReturnsResponse() {
         UserContext.set(7L);
+        com.lifepulse.plan.entity.Plan owned100 = new com.lifepulse.plan.entity.Plan();
+        owned100.setId(100L);
+        owned100.setUserId(7L);
+        when(planMapper.findByUserAndId(7L, 100L)).thenReturn(Optional.of(owned100));
         TaskCreateRequest req = new TaskCreateRequest(
                 "买菜", 2, LocalDate.of(2026, 8, 15), "home", 100L);
 
@@ -128,6 +132,31 @@ class TaskServiceTest {
         verify(mapper, never()).insert(any(Task.class));
     }
 
+    @Test
+    void create_planIdOwnedByCurrentUser_succeeds() {
+        UserContext.set(7L);
+        com.lifepulse.plan.entity.Plan owned = new com.lifepulse.plan.entity.Plan();
+        owned.setId(999L);
+        owned.setUserId(7L);
+        when(planMapper.findByUserAndId(7L, 999L)).thenReturn(Optional.of(owned));
+
+        TaskCreateRequest req = new TaskCreateRequest("买菜", null, null, null, 999L);
+        service.create(req);
+
+        verify(mapper).insert(any(Task.class));
+    }
+
+    @Test
+    void create_planIdNull_skipsOwnershipCheck() {
+        UserContext.set(7L);
+        TaskCreateRequest req = new TaskCreateRequest("买菜", null, null, null, null);
+
+        service.create(req);
+
+        verify(mapper).insert(any(Task.class));
+        verify(planMapper, never()).findByUserAndId(anyLong(), anyLong());
+    }
+
     // ---------- getById ----------
 
     @Test
@@ -186,6 +215,10 @@ class TaskServiceTest {
         UserContext.set(7L);
         Task existing = ownedTask(42L, 7L, "旧");
         when(mapper.findByUserAndId(7L, 42L)).thenReturn(Optional.of(existing));
+        com.lifepulse.plan.entity.Plan owned9 = new com.lifepulse.plan.entity.Plan();
+        owned9.setId(9L);
+        owned9.setUserId(7L);
+        when(planMapper.findByUserAndId(7L, 9L)).thenReturn(Optional.of(owned9));
 
         LocalDate newDue = LocalDate.of(2026, 9, 1);
         TaskUpdateRequest req = new TaskUpdateRequest(
@@ -231,6 +264,44 @@ class TaskServiceTest {
                 .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
 
         verify(mapper, never()).updateById(any(Task.class));
+    }
+
+    @Test
+    void update_planIdOwnedByCurrentUser_appliesChange() {
+        UserContext.set(7L);
+        Task existing = ownedTask(42L, 7L, "旧");
+        when(mapper.findByUserAndId(7L, 42L)).thenReturn(Optional.of(existing));
+        com.lifepulse.plan.entity.Plan owned = new com.lifepulse.plan.entity.Plan();
+        owned.setId(999L);
+        owned.setUserId(7L);
+        when(planMapper.findByUserAndId(7L, 999L)).thenReturn(Optional.of(owned));
+        TaskUpdateRequest req = new TaskUpdateRequest(
+                "新", null, null, null, null, 999L);
+
+        service.update(42L, req);
+
+        ArgumentCaptor<Task> cap = ArgumentCaptor.forClass(Task.class);
+        verify(mapper).updateById(cap.capture());
+        assertThat(cap.getValue().getPlanId()).isEqualTo(999L);
+        assertThat(cap.getValue().getTitle()).isEqualTo("新");
+    }
+
+    @Test
+    void update_planIdNull_keepsOldPlanId() {
+        UserContext.set(7L);
+        Task existing = ownedTask(42L, 7L, "旧");
+        existing.setPlanId(100L);
+        when(mapper.findByUserAndId(7L, 42L)).thenReturn(Optional.of(existing));
+        TaskUpdateRequest req = new TaskUpdateRequest(
+                "新", null, null, null, null, null);
+
+        service.update(42L, req);
+
+        ArgumentCaptor<Task> cap = ArgumentCaptor.forClass(Task.class);
+        verify(mapper).updateById(cap.capture());
+        // planId 保留旧值 100L
+        assertThat(cap.getValue().getPlanId()).isEqualTo(100L);
+        verify(planMapper, never()).findByUserAndId(anyLong(), anyLong());
     }
 
     // ---------- patchStatus ----------

@@ -50,6 +50,7 @@ public class TaskService {
      */
     public TaskResponse create(TaskCreateRequest req) {
         Long userId = requireUserId();
+        requireOwnedPlan(userId, req.planId());
 
         Task t = new Task();
         t.setUserId(userId);
@@ -102,8 +103,12 @@ public class TaskService {
         if (req.priority() != null) t.setPriority(req.priority());
         if (req.dueDate() != null) t.setDueDate(req.dueDate());
         if (req.tag() != null) t.setTag(req.tag());
-        // planId 是可空字段：MVP1 不支持显式"清空 plan 关联"操作（spec §5.3 PUT
-        // 仅描述字段变更，未涉及清空语义）；保留旧值。
+        // planId：若请求提供新 planId，先校验归属；MVP1 不支持显式"清空 plan 关联"
+        // 操作（spec §5.3 PUT 仅描述字段变更，未涉及清空语义）；null → 保留旧值。
+        if (req.planId() != null) {
+            requireOwnedPlan(userId, req.planId());
+            t.setPlanId(req.planId());
+        }
 
         mapper.updateById(t);
         log.debug("task updated uid={} id={}", userId, id);
@@ -186,5 +191,18 @@ public class TaskService {
             throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "未登录");
         }
         return userId;
+    }
+
+    /**
+     * 校验 plan 归属（CLAUDE.md §7.2 跨用户越权硬门 — Phase 3 兜底 Phase 2-B 留的
+     * TODO=plan-cross-user）。{@code planId == null} 表示不关联 plan，跳过校验。
+     * 跨用户 / 不存在 / 已软删 → 抛 1003，与 service 其它方法语义一致。
+     */
+    private void requireOwnedPlan(Long userId, Long planId) {
+        if (planId == null) return;
+        planMapper.findByUserAndId(userId, planId).orElseThrow(() -> {
+            log.warn("task plan cross-user uid={} planId={}", userId, planId);
+            return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权关联该日程");
+        });
     }
 }
