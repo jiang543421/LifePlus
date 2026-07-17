@@ -92,23 +92,31 @@ public class AuthService {
     // ---------- login ----------
 
     public AuthResponse login(LoginRequest req, String ip) {
-        // 1. 登录限流（IP + email 前缀，避免完整 email 落入 Redis key，CLAUDE.md §7.3）
+        // 1. 查 user；不存在或密码错统一 1002（防账号枚举），
+        //    失败时才对 (ip + email 前缀) 计数限流（spec §7.2 "5 次**失败**/分钟"）
         String rlKey = AuthConstants.LOGIN_RL_KEY_PREFIX + ip + ":" + emailKeySuffix(req.email());
-        if (rateLimiter.hit(rlKey, AuthConstants.LOGIN_RL_MAX, AuthConstants.LOGIN_RL_WINDOW)) {
-            throw new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "login rate limit exceeded");
-        }
-
-        // 2. 查 user；不存在或密码错统一 1002（防账号枚举）
         User u = userMapper.findByEmail(req.email());
         if (u == null) {
+            checkRateLimit(rlKey);
             throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "invalid credentials");
         }
         if (!passwordEncoder.matches(req.password(), u.getPasswordHash())) {
+            checkRateLimit(rlKey);
             throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "invalid credentials");
         }
 
-        // 3. 签发 JWT 对并持久化 refresh
+        // 2. 签发 JWT 对并持久化 refresh（成功不计数）
         return issueAndPersist(u.getId());
+    }
+
+    /**
+     * 失败路径限流：调用 rateLimiter.hit 并在超限时抛 1006（CLAUDE.md §7.2）。
+     * 单独抽出便于阅读，且与成功路径的"不计数"形成对照。
+     */
+    private void checkRateLimit(String rlKey) {
+        if (rateLimiter.hit(rlKey, AuthConstants.LOGIN_RL_MAX, AuthConstants.LOGIN_RL_WINDOW)) {
+            throw new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "login rate limit exceeded");
+        }
     }
 
     // ---------- refresh ----------

@@ -24,8 +24,10 @@ import java.util.Collections;
  * <p>{@link #hit(String, int, Duration)} 在 {@code count > max} 时返回 {@code true}
  * 表示已命中上限；调用方应拒绝请求。
  *
- * <p><b>失败开放</b>：Redis 不可达时 {@link DataAccessException} 被捕获并降级放行，
- * 同时记录 WARN 日志，避免因基础设施故障阻塞正常登录（plan §6）。
+ * <p><b>失败关闭（fail-closed）</b>：Redis 不可达时 {@link DataAccessException} 被捕获
+ * 并降级为"视为已限流"（返回 {@code true}），同时记录 ERROR 日志 ——
+ * 攻击者打瘫 Redis 绕过限流做暴力破解的风险不可接受，故选择安全优先。
+ * （CLAUDE.md §7.2 + Review C-2 修订。）
  */
 @Component
 public class RateLimiter {
@@ -47,7 +49,7 @@ public class RateLimiter {
      * @param key    完整 Redis key（含前缀）
      * @param max    窗口内允许的最大次数
      * @param window 窗口长度（首次写入时设置 TTL）
-     * @return {@code true} 当本次计数后已超限
+     * @return {@code true} 当本次计数后已超限，或 Redis 不可达（fail-closed）
      */
     public boolean hit(String key, int max, Duration window) {
         long count;
@@ -58,9 +60,9 @@ public class RateLimiter {
                     String.valueOf(window.toSeconds()));
             count = result == null ? 0L : result;
         } catch (DataAccessException e) {
-            // 失败开放：Redis 不可达时降级放行，避免阻塞登录主链路
-            log.warn("rate-limit unavailable, fail-open: key={}, err={}", key, e.getMessage());
-            return false;
+            // 失败关闭：Redis 不可达时视为已限流，防止攻击者绕过暴力破解防线
+            log.error("rate-limit unavailable, fail-closed: key={}, err={}", key, e.getMessage());
+            return true;
         }
         return count > max;
     }
