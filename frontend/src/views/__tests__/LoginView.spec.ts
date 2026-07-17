@@ -88,6 +88,40 @@ describe('LoginView', () => {
     expect(router.currentRoute.value.path).toBe('/tasks');
   });
 
+  it('带 ?redirect=//evil.com 时回退到 /（open redirect 防护）', async () => {
+    // CLAUDE.md §7 + Review C-4: protocol-relative URL 必须被拒
+    vi.mocked(authApi.login).mockResolvedValue({ accessToken: 'A', refreshToken: 'R', expiresIn: 3600 });
+    vi.mocked(authApi.me).mockResolvedValue({ id: 1, email: 'a@b.com', nickname: null });
+
+    const router = buildRouter('/login?redirect=//evil.com');
+    await router.isReady();
+
+    const wrapper = mount(LoginView, { global: { plugins: [router, ElementPlus] } });
+    await wrapper.find('input[type="email"]').setValue('a@b.com');
+    await wrapper.find('input[type="password"]').setValue('pw123456');
+    await wrapper.find('button.submit-btn').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/');
+  });
+
+  it('带 ?redirect=https://evil.com 时回退到 /（open redirect 防护）', async () => {
+    // 绝对 URL 也必须被拒
+    vi.mocked(authApi.login).mockResolvedValue({ accessToken: 'A', refreshToken: 'R', expiresIn: 3600 });
+    vi.mocked(authApi.me).mockResolvedValue({ id: 1, email: 'a@b.com', nickname: null });
+
+    const router = buildRouter('/login?redirect=https://evil.com');
+    await router.isReady();
+
+    const wrapper = mount(LoginView, { global: { plugins: [router, ElementPlus] } });
+    await wrapper.find('input[type="email"]').setValue('a@b.com');
+    await wrapper.find('input[type="password"]').setValue('pw123456');
+    await wrapper.find('button.submit-btn').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/');
+  });
+
   it('email 缺失时不调 login API', async () => {
     const router = buildRouter('/login');
     await router.isReady();

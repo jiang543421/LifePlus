@@ -5,6 +5,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 import { ApiError } from '@/api/http';
 import { showAuthError } from '@/utils/error';
+import { safeRedirect } from '@/utils/safeRedirect';
 
 const router = useRouter();
 const route = useRoute();
@@ -36,7 +37,8 @@ async function submit(): Promise<void> {
   submitting.value = true;
   try {
     await auth.login(form.email, form.password);
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
+    // safeRedirect: 防止 ?redirect=https://evil.com 等 open redirect 攻击（CLAUDE.md §7 + Review C-4）
+    const redirect = safeRedirect(route.query.redirect);
     await router.push(redirect);
   } catch (e) {
     if (e instanceof ApiError) {
