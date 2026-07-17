@@ -168,8 +168,13 @@ export const useTaskStore = defineStore('task', {
       this.total = 0;
       this.error = null;
       this.errorCode = null;
+      // H-8：loading / byPlanLoading 必须翻回 false，
+      // 否则 fetchList / fetchByPlan 仍 in-flight 时卸载视图并重新进入，
+      // 会显示「加载中」但实际无请求在跑。
+      this.loading = false;
       this.byPlanTasks = null;
       this.byPlanError = null;
+      this.byPlanLoading = false;
       this.filter = { page: 1, size: this.filter.size };
     },
   },

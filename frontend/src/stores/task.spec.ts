@@ -156,6 +156,40 @@ describe('useTaskStore / clear', () => {
     expect(store.errorCode).toBeNull();
     expect(store.filter).toEqual({ page: 1, size: 20 });
   });
+
+  // H-8：clear() 之前必须把 loading / byPlanLoading 翻回 false，
+  // 否则视图卸载期间还在 in-flight 的请求回来后 loading 仍为 true，
+  // 重新进入页面会显示「加载中」却无请求在跑。
+  it('清空 byPlanTasks/byPlanError 并把 byPlanLoading 重置为 false', async () => {
+    const items: TaskListItem[] = [
+      { id: 1, title: '关联任务', status: 0, priority: 0, dueDate: null, tag: null },
+    ];
+    vi.mocked(taskApi.byPlan).mockResolvedValueOnce(items);
+
+    const store = useTaskStore();
+    await store.fetchByPlan(7);
+    expect(store.byPlanTasks).toEqual(items);
+    expect(store.byPlanLoading).toBe(false);
+
+    // 模拟 fetchByPlan 在路上时（或者重新进入页面前残留的）byPlanLoading=true 状态
+    store.byPlanLoading = true;
+    store.byPlanError = 'in-flight 错误残留';
+
+    store.clear();
+    expect(store.byPlanTasks).toBeNull();
+    expect(store.byPlanError).toBeNull();
+    expect(store.byPlanLoading).toBe(false);
+  });
+
+  it('同时重置 loading 为 false（避免视图残留「加载中」状态）', async () => {
+    const store = useTaskStore();
+    store.loading = true;
+    store.error = 'in-flight';
+
+    store.clear();
+    expect(store.loading).toBe(false);
+    expect(store.error).toBeNull();
+  });
 });
 
 describe('useTaskStore / mutations (create / patchStatus / remove)', () => {
