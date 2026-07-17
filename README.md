@@ -39,7 +39,7 @@ cd backend
 LP_DB_URL=jdbc:mysql://localhost:3306/lifepulse?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai \
 LP_DB_USER=lp LP_DB_PASS=lp_dev_only \
 LP_REDIS_URL=redis://localhost:6379 \
-LP_JWT_SECRET=dev-only-secret-replace-me-32bytes-xxx \
+LP_JWT_SECRET=local-dev-secret-please-change-in-production-12345 \
 mvn spring-boot:run
 
 # 终端 3：前端
@@ -94,7 +94,9 @@ LifePulse/
 ## 5. 安全提示
 
 - `.env` / `.env.local` 已 `.gitignore` 排除；**严禁把 `.env` 加入版本控制**
-- `LP_JWT_SECRET` 生产部署前必须替换为 ≥ 32 字节随机串；本地默认值仅供开发
+- `LP_JWT_SECRET` 启动校验：≥ 32 字节，且不得包含 `replace-me` 子串
+  （占位符串被 fail-fast 拒绝，防止误部署 — CLAUDE.md §7.1）。
+  本地 dev 示例值见 §1.3。
 - MySQL / Redis 容器内置的 `lp_dev_only` 密码**只用于本地**，生产必须独立配置
 
 ## 6. 文档导航
