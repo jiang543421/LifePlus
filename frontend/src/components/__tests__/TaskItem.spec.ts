@@ -61,4 +61,50 @@ describe('TaskItem', () => {
     expect(w.emitted('edit')?.[0]).toEqual([42]);
     expect(w.emitted('remove')?.[0]).toEqual([42]);
   });
+
+  // C-6：补齐 priority 全部档位 + dueDate/tag 渲染 + 未知 status fallback + toggleStatus fallback
+
+  it('priority=NONE → 不渲染 .priority div（v-if=false 分支）', () => {
+    const w = mountItem(item({ priority: TaskPriorityValue.NONE }));
+    expect(w.find('.priority').exists()).toBe(false);
+  });
+
+  it('priority=LOW/MEDIUM/HIGH 渲染 P低/P中/P高 + data-priority', () => {
+    const low = mountItem(item({ priority: TaskPriorityValue.LOW }));
+    expect(low.find('.priority').text()).toBe('P低');
+    expect(low.find('.priority').attributes('data-priority')).toBe('1');
+
+    const med = mountItem(item({ priority: TaskPriorityValue.MEDIUM }));
+    expect(med.find('.priority').text()).toBe('P中');
+    expect(med.find('.priority').attributes('data-priority')).toBe('2');
+
+    const high = mountItem(item({ priority: TaskPriorityValue.HIGH }));
+    expect(high.find('.priority').text()).toBe('P高');
+    expect(high.find('.priority').attributes('data-priority')).toBe('3');
+  });
+
+  it('dueDate 非空 → 渲染 📅 {date}', () => {
+    const w = mountItem(item({ dueDate: '2026-08-10' }));
+    expect(w.find('.due').text()).toContain('📅 2026-08-10');
+  });
+
+  it('tag 非空 → 渲染 #{tag}', () => {
+    const w = mountItem(item({ tag: 'work' }));
+    expect(w.find('.tag').text()).toBe('#work');
+  });
+
+  it('未知 status → statusLabel=未知 + el-tag--info（default 分支）', () => {
+    // 99 是 TaskStatusValue 之外的占位值，触发 statusType/statusLabel 的 default case
+    const w = mountItem(item({ status: 99 as unknown as TaskListItem['status'] }));
+    expect(w.text()).toContain('未知');
+    expect(w.find('.el-tag--info').exists()).toBe(true);
+  });
+
+  it('toggleStatus：未知 status（除 TODO/DONE）→ emit change-status=TODO', async () => {
+    // statusType/statusLabel 的 default 分支下，toggleStatus 也走 TODO fallback
+    const w = mountItem(item({ status: 99 as unknown as TaskListItem['status'] }));
+    expect(w.find('[data-testid="toggle-status"]').exists()).toBe(true);
+    await w.find('[data-testid="toggle-status"]').trigger('click');
+    expect(w.emitted('change-status')?.[0]).toEqual([TaskStatusValue.TODO]);
+  });
 });

@@ -147,4 +147,106 @@ describe('EventDialog / edit', () => {
     await flushPromises();
     expect(isAllDayStart(w)).toBe(true);
   });
+
+  // C-6：补齐 watch else 分支（ALL_DAY → TIMED 回切）+ buildPayload 缺起止校验
+  it('从全天再切回时段时起止补齐 T09:00:00 / T10:00:00 边界（watch else 分支）', async () => {
+    // allDayInitial 起止为 '2026-08-20' / '2026-08-21'（slice 0,10 后是日期），切回 timed 要补默认时刻
+    const w = await openDialog({ mode: 'edit', initial: allDayInitial });
+    expect(isAllDayStart(w)).toBe(true);
+    // 关掉全天开关 → TIMED
+    await w.find('[data-testid="event-allday"]').trigger('click');
+    await flushPromises();
+    expect(isAllDayStart(w)).toBe(false);
+    // 提交应得到补齐时刻的 payload
+    await w.find('[data-testid="event-title"] input').setValue('出差');
+    await w.find('[data-testid="event-submit"]').trigger('click');
+    await flushPromises();
+    expect(w.emitted('submit')?.[0]?.[0]).toMatchObject({
+      title: '出差',
+      allDay: 0,
+      startTime: '2026-08-20T09:00:00',
+      endTime: '2026-08-21T10:00:00',
+    });
+  });
+
+  it('起止时间为空时校验失败不 emit submit（buildPayload 第二个 return null）', async () => {
+    const w = await openDialog({ mode: 'edit', initial: timedInitial });
+    // 直接清空表单的 start/end，触发「请选择起止时间」分支
+    const form = (w.vm as unknown as { form: { start: string; end: string } }).form;
+    form.start = '';
+    form.end = '';
+    await w.find('[data-testid="event-submit"]').trigger('click');
+    await flushPromises();
+    expect(w.emitted('submit')).toBeFalsy();
+  });
+
+  // C-6：补 reminderModel computed set 分支（null <-> REMINDER_NONE 哨兵）
+  it('reminderModel setter：v === REMINDER_NONE → form.reminderMin = null', async () => {
+    // initial.reminderMin = 15，先重置为 null，再触发 setter 走 REMINDER_NONE 分支
+    const w = await openDialog({ mode: 'edit', initial: timedInitial });
+    const form = (w.vm as unknown as { form: { reminderMin: number | null } }).form;
+    form.reminderMin = 15;
+    // reminderModel 在 vm proxy 上是 computed，通过赋值触发 setter
+    (w.vm as unknown as { reminderModel: number }).reminderModel = -1;
+    expect(form.reminderMin).toBeNull();
+  });
+
+  it('reminderModel setter：v !== REMINDER_NONE → form.reminderMin = v', async () => {
+    const w = await openDialog({ mode: 'edit', initial: timedInitial });
+    const form = (w.vm as unknown as { form: { reminderMin: number | null } }).form;
+    form.reminderMin = null;
+    (w.vm as unknown as { reminderModel: number }).reminderModel = 30;
+    expect(form.reminderMin).toBe(30);
+  });
+
+  // C-6：补 toAllDay / toTimed 内部边界分支 + resetForm defaultDate ?? fallback
+  it("form.start 为空时切换全天：toAllDay('') → ''；切回时段 toTimed('') → ''（falsy 分支）", async () => {
+    const w = await openDialog({ mode: 'edit', initial: timedInitial });
+    const form = (w.vm as unknown as { form: { start: string; end: string } }).form;
+    form.start = '';
+    form.end = '';
+    // TIMED → ALL_DAY：触发 toAllDay('') → ''
+    await w.find('[data-testid="event-allday"]').trigger('click');
+    await flushPromises();
+    expect(form.start).toBe('');
+    expect(form.end).toBe('');
+    // ALL_DAY → TIMED：触发 toTimed('', hm) → ''
+    await w.find('[data-testid="event-allday"]').trigger('click');
+    await flushPromises();
+    expect(form.start).toBe('');
+    expect(form.end).toBe('');
+  });
+
+  it('10 字符 start 来回切换全天：toTimed 走 length<=10 真分支（拼接 hm）', async () => {
+    // resetForm 在 timed 模式下 form.start = '2026-08-15' (10 字符)，
+    // 切全天 → toAllDay → 不变；切回 → toTimed → length=10 → 拼接默认时刻
+    const shortTimedInitial: PlanResponse = {
+      ...timedInitial,
+      startTime: '2026-08-15',
+      endTime: '2026-08-15',
+    };
+    const w = await openDialog({ mode: 'edit', initial: shortTimedInitial });
+    const form = (w.vm as unknown as { form: { start: string; end: string; title: string } }).form;
+    expect(form.start).toBe('2026-08-15');
+    // TIMED → ALL_DAY
+    await w.find('[data-testid="event-allday"]').trigger('click');
+    await flushPromises();
+    expect(form.start).toBe('2026-08-15');
+    // ALL_DAY → TIMED：触发 toTimed 拼接分支
+    await w.find('[data-testid="event-allday"]').trigger('click');
+    await flushPromises();
+    expect(form.start).toBe('2026-08-15T09:00:00');
+    expect(form.end).toBe('2026-08-15T10:00:00');
+  });
+
+  it('create 模式无 defaultDate → resetForm 走 dayjs().format fallback', async () => {
+    // props.defaultDate 为 null/undefined 触发 ?? 右边
+    const w = await openDialog({ mode: 'create' });
+    const form = (w.vm as unknown as { form: { start: string; end: string; title: string } }).form;
+    // 起止必须是非空字符串（YYYY-MM-DDTHH:mm:ss），证明 dayjs fallback 工作
+    expect(form.start).toMatch(/^\d{4}-\d{2}-\d{2}T09:00:00$/);
+    expect(form.end).toMatch(/^\d{4}-\d{2}-\d{2}T10:00:00$/);
+    // 标题保持为空字符串
+    expect(form.title).toBe('');
+  });
 });
