@@ -96,11 +96,18 @@ class JwtServiceTest {
 
     @Test
     void parse_tamperedSignature_throwsBusinessException1401() {
-        // Arrange: 拿合法 token 改最后一位
+        // Arrange: 篡改签名段中位字符（Phase 2-C 修复：原"改末位"在批量
+        // verify 时偶发不触发 1401，疑与 JJWT 0.12.6 Base64 边界处理有关；
+        // 中段字符必然落到 signature 内部字节，篡改必触发校验失败）
         String token = jwtService.issueAccess(42L);
-        char last = token.charAt(token.length() - 1);
-        char tampered = last == 'A' ? 'B' : 'A';
-        String bad = token.substring(0, token.length() - 1) + tampered;
+        int lastDot = token.lastIndexOf('.');
+        String headerPayload = token.substring(0, lastDot);
+        String signature = token.substring(lastDot + 1);
+        int mid = signature.length() / 2;
+        char orig = signature.charAt(mid);
+        char tampered = orig == 'A' ? 'B' : 'A';
+        String badSig = signature.substring(0, mid) + tampered + signature.substring(mid + 1);
+        String bad = headerPayload + "." + badSig;
 
         // Act + Assert
         assertThatThrownBy(() -> jwtService.parse(bad))

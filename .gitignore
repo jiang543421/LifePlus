@@ -4,9 +4,17 @@ node_modules/
 dist/
 .idea/
 .vscode/
+.claude/
+coverage/
 *.iml
 .env
 .env.local
 *.log
 .DS_Store
 backend/.mvn/wrapper/maven-wrapper.jar
+
+# Playwright（仓库内任意层级的产物；不加前导 /，因为可能落在 frontend/ 下）
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/

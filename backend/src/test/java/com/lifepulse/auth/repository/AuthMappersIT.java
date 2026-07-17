@@ -3,8 +3,10 @@ package com.lifepulse.auth.repository;
 import com.lifepulse.auth.entity.RefreshToken;
 import com.lifepulse.auth.entity.User;
 import com.lifepulse.it.AbstractIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.OffsetDateTime;
 
@@ -19,6 +21,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>对覆盖率与回归校验等价：所有断言保持 TDD（每个 mapper 2 个测试），且运行于同一
  * Flyway-managed 真实 MySQL + 本地 Redis（spec §6.4 强制）。
+ *
+ * <p>{@code @BeforeEach} 清表（Phase 2-C 修复）：容器 {@code withReuse=true} 在共享 JVM
+ * 内累积旧测试数据；硬编码 {@code alice@example.com} / {@code sha256-hex-of-some-token} /
+ * {@code once-only-hash} 在重跑时撞 UNIQUE 约束失败。{@link User} / {@link RefreshToken}
+ * 的 UNIQUE 索引 ({@code uq_email} / {@code uq_token_hash}) 不含 {@code deleted} 列，
+ * 单纯逻辑删除无法释放索引槽位；改用 {@link JdbcTemplate} 走原生 SQL 物理删除。
  */
 class AuthMappersIT extends AbstractIntegrationTest {
 
@@ -27,6 +35,17 @@ class AuthMappersIT extends AbstractIntegrationTest {
 
     @Autowired
     private RefreshTokenMapper refreshTokenMapper;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @BeforeEach
+    void wipeTables() {
+        // 物理 DELETE（不走 ORM @TableLogic），UNIQUE 索引同时释放
+        // 先 refresh_token（FK 引用 user.id 虽未声明，但保持顺序以防 schema 演进）
+        jdbc.update("DELETE FROM t_refresh_token");
+        jdbc.update("DELETE FROM t_user");
+    }
 
     // ---------- UserMapper (A-002) ----------
 

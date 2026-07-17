@@ -4,7 +4,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -18,7 +17,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *   <li>所有 Flyway 迁移会自动运行（{@code spring.flyway.enabled=true}）</li>
  * </ul>
  *
- * 子类用 {@code @Autowired} 注入需要的服务即可。
+ * <h3>plan §13 已知问题修复（跨 IT class 容器接力）</h3>
+ * <p>不要用 JUnit5 {@code @Container} 注解 — 它会在每个 IT class 结束时调用
+ * {@code MYSQL.stop()}，即使 {@code withReuse(true)} 也救不回"先 stop 再 start"
+ * 之间的容器丢失窗口。改成静态初始化块显式 {@code MYSQL.start()}，
+ * 容器在 JVM 退出时才被 Ryuk 清理，配合 Failsafe 的 {@code reuseForks=true}，
+ * 同 JVM 内多 IT class 共享一个容器实例。
  */
 @Testcontainers
 @SpringBootTest
@@ -32,20 +36,27 @@ public abstract class AbstractIntegrationTest {
     static final String LOCAL_REDIS_URL = "redis://:123456@localhost:6379";
 
     /**
-     * MySQL 容器：启用 {@code withReuse(true)}，必须在 mvn 命令里加
-     * {@code -Dorg.testcontainers.reuse.enable=true}（或在 ~/.testcontainers.properties 设置
-     * {@code tc.reuse.enable=true}）才能跨 Spring 测试上下文复用。
-     *
-     * <p>复用是为了规避 1.21.x 下第二个 IT class 的 Spring context 重建时
-     * 旧容器被 stop、新 HikariPool 抢连失败的问题。
+     * MySQL 容器：{@code withReuse(true)} + 显式 start（不要 @Container）。
+     * <p>复用条件：
+     * <ul>
+     *   <li>{@code ~/.testcontainers.properties} 写
+     *       {@code testcontainers.reuse.enable=true}</li>
+     *   <li>Failsafe plugin {@code <reuseForks>true</reuseForks>}
+     *       + {@code <forkCount>1</forkCount>}（pom.xml 已配）</li>
+     * </ul>
      */
-    @Container
-    @SuppressWarnings("resource") // managed by Testcontainers
+    @SuppressWarnings("resource") // managed by Testcontainers + Ryuk
     public static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("lifepulse")
             .withUsername("lp")
             .withPassword("lp_dev_only")
             .withReuse(true);
+
+    static {
+        // 显式启动：避免 JUnit5 @Container 在每个 IT class 结束时 stop。
+        // start() 内部对已启动的容器是 no-op，所以多次调用安全。
+        MYSQL.start();
+    }
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
@@ -57,5 +68,11 @@ public abstract class AbstractIntegrationTest {
         // IT 强制开启 Flyway 与 Redis（SmokeTest 例外）
         registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.autoconfigure.exclude", () -> "");
+        // plan §13 已知问题修复：Hikari pool validation 三件套
+        registry.add("spring.datasource.hikari.connection-test-query", () -> "SELECT 1");
+        registry.add("spring.datasource.hikari.max-lifetime", () -> "300000");       // 5min
+        registry.add("spring.datasource.hikari.idle-timeout", () -> "60000");         // 1min
+        registry.add("spring.datasource.hikari.validation-timeout", () -> "3000");    // 3s
+        registry.add("spring.datasource.hikari.minimum-idle", () -> "1");
     }
 }
