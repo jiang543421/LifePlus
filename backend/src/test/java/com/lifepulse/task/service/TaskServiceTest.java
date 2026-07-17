@@ -12,6 +12,7 @@ import com.lifepulse.task.dto.TaskResponse;
 import com.lifepulse.task.dto.TaskUpdateRequest;
 import com.lifepulse.task.entity.Task;
 import com.lifepulse.task.repository.TaskMapper;
+import com.lifepulse.plan.repository.PlanMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,11 +48,14 @@ class TaskServiceTest {
     @Mock
     private TaskMapper mapper;
 
+    @Mock
+    private PlanMapper planMapper;
+
     private TaskService service;
 
     @BeforeEach
     void setUp() {
-        service = new TaskService(mapper);
+        service = new TaskService(mapper, planMapper);
     }
 
     @AfterEach
@@ -108,6 +112,20 @@ class TaskServiceTest {
         assertThat(inserted.getDueDate()).isNull();
         assertThat(inserted.getTag()).isNull();
         assertThat(inserted.getPlanId()).isNull();
+    }
+
+    @Test
+    void create_planIdNotOwnedByCurrentUser_throws1003() {
+        UserContext.set(7L);
+        // plan 999 不属于 user 7
+        when(planMapper.findByUserAndId(7L, 999L)).thenReturn(Optional.empty());
+        TaskCreateRequest req = new TaskCreateRequest("买菜", null, null, null, 999L);
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+
+        verify(mapper, never()).insert(any(Task.class));
     }
 
     // ---------- getById ----------
@@ -190,6 +208,23 @@ class TaskServiceTest {
         when(mapper.findByUserAndId(2L, 42L)).thenReturn(Optional.empty());
 
         TaskUpdateRequest req = new TaskUpdateRequest("新", null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.update(42L, req))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+
+        verify(mapper, never()).updateById(any(Task.class));
+    }
+
+    @Test
+    void update_planIdNotOwnedByCurrentUser_throws1003() {
+        UserContext.set(7L);
+        Task existing = ownedTask(42L, 7L, "旧");
+        when(mapper.findByUserAndId(7L, 42L)).thenReturn(Optional.of(existing));
+        // plan 999 不属于 user 7
+        when(planMapper.findByUserAndId(7L, 999L)).thenReturn(Optional.empty());
+        TaskUpdateRequest req = new TaskUpdateRequest(
+                "新", null, null, null, null, 999L);
 
         assertThatThrownBy(() -> service.update(42L, req))
                 .isInstanceOf(BusinessException.class)

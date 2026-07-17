@@ -11,6 +11,7 @@ import com.lifepulse.task.dto.TaskResponse;
 import com.lifepulse.task.dto.TaskUpdateRequest;
 import com.lifepulse.task.entity.Task;
 import com.lifepulse.task.repository.TaskMapper;
+import com.lifepulse.plan.repository.PlanMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,9 +35,11 @@ public class TaskService {
     private static final Logger log = LoggerFactory.getLogger(TaskService.class);
 
     private final TaskMapper mapper;
+    private final PlanMapper planMapper;
 
-    public TaskService(TaskMapper mapper) {
+    public TaskService(TaskMapper mapper, PlanMapper planMapper) {
         this.mapper = mapper;
+        this.planMapper = planMapper;
     }
 
     // ---------- create ----------
