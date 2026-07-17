@@ -15,6 +15,7 @@ import com.lifepulse.common.security.RateLimiter;
 import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +67,7 @@ public class AuthService {
 
     // ---------- register ----------
 
+    @Transactional
     public Long register(RegisterRequest req, String ip) {
         // 1. 注册限流（IP 维度，spec §03）
         String rlKey = AuthConstants.REGISTER_RL_KEY_PREFIX + ip;
@@ -73,17 +75,24 @@ public class AuthService {
             throw new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "register rate limit exceeded");
         }
 
-        // 2. email 唯一性
+        // 2. email 唯一性（前置检查）
         if (userMapper.findByEmail(req.email()) != null) {
             throw new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email already registered");
         }
 
-        // 3. 持久化
+        // 3. 持久化。Review H-1：前置检查与 insert 之间存在并发窗口，
+        //    两个并发 register 同一 email 都会过前置，第二个 insert 触发 DB
+        //    唯一索引 → 把 DataIntegrityViolationException 转 1005（不是 500）。
         User u = new User();
         u.setEmail(req.email());
         u.setPasswordHash(passwordEncoder.encode(req.password()));
         u.setNickname(req.nickname());
-        userMapper.insert(u);
+        try {
+            userMapper.insert(u);
+        } catch (DataIntegrityViolationException e) {
+            // DB 唯一索引兜底：与前置检查语义保持一致
+            throw new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email already registered");
+        }
 
         // 4. 返回新用户 id
         return u.getId();

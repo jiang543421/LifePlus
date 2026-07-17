@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -96,6 +97,27 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_EMAIL_TAKEN);
         verify(userMapper, never()).insert(any(User.class));
+    }
+
+    /**
+     * Review H-1：并发 register 同一 email 时，前置 {@code findByEmail} 检查与
+     * {@code insert} 之间存在窗口，两个并发请求都过了前置检查，第二个 insert
+     * 触发 DB 唯一索引 → service 必须把 {@link DataIntegrityViolationException}
+     * 转成 1005 而不是冒泡成 500。
+     */
+    @Test
+    void register_concurrentRaceDataIntegrityViolation_translatesTo1005() {
+        // Arrange: findByEmail 返回 null（前置检查未命中），但 insert 时 DB 唯一索引兜底
+        RegisterRequest req = new RegisterRequest("alice@example.com", "Valid1Pass", "alice");
+        when(userMapper.findByEmail("alice@example.com")).thenReturn(null);
+        when(userMapper.insert(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "Duplicate entry 'alice@example.com' for key 'uq_email'"));
+
+        // Act + Assert
+        assertThatThrownBy(() -> authService.register(req, "127.0.0.1"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_EMAIL_TAKEN);
     }
 
     // ---------- login ----------
