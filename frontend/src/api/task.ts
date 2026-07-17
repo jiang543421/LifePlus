@@ -33,7 +33,9 @@ export const taskApi = {
     if (filter.dueTo) params.dueTo = filter.dueTo;
     params.page = filter.page;
     params.size = filter.size;
-    return http.get<unknown, TaskListResponse>('/tasks', params);
+    // 注意：axios.get(url, config) 的第二个参数是 AxiosRequestConfig，不是 query params 本身。
+    // 必须包成 { params }，否则 status=0 之类字段被当作 config 选项丢弃，URL 永远不带 query。
+    return http.get<unknown, TaskListResponse>('/tasks', { params });
   },
 
   /** 按 plan 聚合（GET /tasks/by-plan/{planId}）。 */
