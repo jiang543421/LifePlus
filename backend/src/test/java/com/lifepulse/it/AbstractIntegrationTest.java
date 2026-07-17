@@ -74,5 +74,10 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.hikari.idle-timeout", () -> "60000");         // 1min
         registry.add("spring.datasource.hikari.validation-timeout", () -> "3000");    // 3s
         registry.add("spring.datasource.hikari.minimum-idle", () -> "1");
+        // 注入合法 JWT secret（≥32 字节、不含 'replace-me'）。
+        // application.yml 默认值是 dev 占位符，C-3 fail-fast 校验（C-3 修复）会拒绝启动，
+        // IT 必须显式注入一个测试专用 secret 才通过。
+        registry.add("lp.jwt.secret",
+                () -> "test-only-jwt-secret-32bytes-min-padding-not-real-secret-aaaaaaaa");
     }
 }

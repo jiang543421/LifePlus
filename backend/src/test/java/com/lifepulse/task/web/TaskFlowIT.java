@@ -245,16 +245,27 @@ class TaskFlowIT extends AbstractIntegrationTest {
         registerAndLogin(email, "Valid1Pass", ip);
         String accessToken = accessTokenFor(email, "Valid1Pass", ip);
 
-        // 创建 3 条 task，其中 2 条 plan_id=500
-        String bodyA = "{\"title\":\"p1\",\"planId\":500}";
-        String bodyB = "{\"title\":\"p2\",\"planId\":500}";
+        // C-1 修复后：task 的 planId 必须属于当前用户。
+        // 1. 先 POST /plans 创建一个属于当前用户的 plan，拿到 planId
+        String planBody = "{\"title\":\"周会\",\"startTime\":\"2026-08-01T10:00:00\",\"endTime\":\"2026-08-01T11:00:00\"}";
+        MvcResult planCreate = mvc.perform(post("/api/v1/plans")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(planBody))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long planId = readTree(planCreate).path("data").path("id").asLong();
+
+        // 2. 创建 3 条 task，其中 2 条 plan_id=planId
+        String bodyA = "{\"title\":\"p1\",\"planId\":" + planId + "}";
+        String bodyB = "{\"title\":\"p2\",\"planId\":" + planId + "}";
         String bodyC = "{\"title\":\"no-plan\"}";
         long a = createTaskRaw(accessToken, bodyA);
         long b = createTaskRaw(accessToken, bodyB);
         createTaskRaw(accessToken, bodyC);
 
-        // GET /tasks/by-plan/500 → total=2
-        mvc.perform(get("/api/v1/tasks/by-plan/500").header("Authorization", "Bearer " + accessToken))
+        // 3. GET /tasks/by-plan/{planId} → total=2
+        mvc.perform(get("/api/v1/tasks/by-plan/" + planId).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[*].title", org.hamcrest.Matchers.containsInAnyOrder("p1", "p2")));
