@@ -10,6 +10,7 @@ import { formatInShanghai } from '@/utils/time';
 import { PlanAllDayValue } from '@/types';
 import type { PlanCreateRequest, PlanResponse, PlanUpdateRequest } from '@/types';
 import EventDialog from '@/components/EventDialog.vue';
+import PlanTaskList from '@/components/PlanTaskList.vue';
 
 /**
  * 事件详情页（spec §04 §5 + PRD PLAN-2/PLAN-3）。
@@ -123,6 +124,10 @@ async function removePlan(): Promise<void> {
 function goBack(): void {
   void router.push('/plans');
 }
+
+function onTaskOpen(taskId: number): void {
+  void router.push(`/tasks/${taskId}`);
+}
 </script>
 
 <template>
@@ -170,6 +175,8 @@ function goBack(): void {
         <el-button type="primary" data-testid="edit-start" @click="startEdit">编辑</el-button>
         <el-button type="danger" data-testid="delete-btn" @click="removePlan">删除</el-button>
       </div>
+
+      <PlanTaskList :plan-id="plan.id" @open="onTaskOpen" />
     </article>
 
     <EventDialog
