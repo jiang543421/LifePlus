@@ -9,6 +9,9 @@ const routes: RouteRecordRaw[] = [
   // spec §04 §2：/tasks /tasks/:id 都需登录；:id 限定数字避免 catch-all 误吞。
   { path: '/tasks', name: 'tasks', component: () => import('@/views/TaskListView.vue'), meta: { title: '任务' } },
   { path: '/tasks/:id(\\d+)', name: 'task-detail', component: () => import('@/views/TaskDetailView.vue'), meta: { title: '任务详情' } },
+  // spec §04 §2：/plans /plans/:id 都需登录；:id 限定数字避免 catch-all 误吞。
+  { path: '/plans', name: 'plans', component: () => import('@/views/PlanCalendarView.vue'), meta: { title: '日程' } },
+  { path: '/plans/:id(\\d+)', name: 'plan-detail', component: () => import('@/views/PlanDetailView.vue'), meta: { title: '日程详情' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

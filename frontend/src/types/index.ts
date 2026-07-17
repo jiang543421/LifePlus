@@ -148,3 +148,83 @@ export interface TaskFilter {
   page: number;
   size: number;
 }
+
+// ----------------------------------------------------------------------
+// Plan 模块类型（spec §04 §5 + 后端 PlanResponse / PlanListItem）
+// ----------------------------------------------------------------------
+
+/** 计划全天标记字面值（与后端 PlanCreateRequest @Min(0)@Max(1) 对齐）。 */
+export type PlanAllDay = 0 | 1;
+export const PlanAllDayValue = {
+  TIMED: 0,
+  ALL_DAY: 1,
+} as const;
+
+/** 计划详情（POST /plans / GET /plans/{id} 响应）。 */
+export interface PlanResponse {
+  id: number;
+  userId: number;
+  title: string;
+  /** ISO-8601 local datetime（无 offset，约定 TZ Asia/Shanghai 解释）。 */
+  startTime: string;
+  /** ISO-8601 local datetime。 */
+  endTime: string;
+  allDay: PlanAllDay;
+  location: string | null;
+  note: string | null;
+  reminderMin: number | null;
+  /** ISO-8601 datetime with offset（与 TaskResponse 对齐）。 */
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 计划列表项（GET /plans 响应中精简字段：无 note/userId/createdAt/updatedAt）。 */
+export interface PlanListItem {
+  id: number;
+  title: string;
+  startTime: string;
+  endTime: string;
+  allDay: PlanAllDay;
+  location: string | null;
+  reminderMin: number | null;
+}
+
+/** 计划分页响应（与后端 PageResponse<T> 对齐）。 */
+export interface PlanListResponse {
+  items: PlanListItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+/** 创建请求（POST /plans body）。 */
+export interface PlanCreateRequest {
+  title: string;
+  startTime: string;
+  endTime: string;
+  allDay?: PlanAllDay;
+  location?: string | null;
+  note?: string | null;
+  reminderMin?: number | null;
+}
+
+/** 更新请求（PUT /plans/{id} body）— 所有字段可选，null-skip。 */
+export interface PlanUpdateRequest {
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+  allDay?: PlanAllDay;
+  location?: string | null;
+  note?: string | null;
+  reminderMin?: number | null;
+}
+
+/** 列表过滤条件（与后端 PlanFilter 对齐，page/size 必有）。 */
+export interface PlanFilter {
+  /** ISO-8601 local datetime 下界（含），null = 无下界。 */
+  from?: string;
+  /** ISO-8601 local datetime 上界（含），null = 无上界。 */
+  to?: string;
+  page: number;
+  size: number;
+}

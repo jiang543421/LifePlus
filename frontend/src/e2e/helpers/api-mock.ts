@@ -12,6 +12,12 @@
  */
 import type { Page } from '@playwright/test';
 import type {
+  PlanAllDay,
+  PlanCreateRequest,
+  PlanListItem,
+  PlanListResponse,
+  PlanResponse,
+  PlanUpdateRequest,
   TaskCreateRequest,
   TaskListItem,
   TaskListResponse,
@@ -446,6 +452,209 @@ export async function setupTaskDefaults(
  */
 export async function mockTaskCrossUser(page: Page, taskId: number): Promise<void> {
   await page.route(`**/api/v1/tasks/${taskId}`, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: envelopeErr(1003, 'cross user denied'),
+    });
+  });
+}
+
+// ----------------------------------------------------------------------
+// Plan 模块 mock（Phase 3-G）
+// ----------------------------------------------------------------------
+
+/** 单计划 mock 数据（POST/GET /plans* 的完整结构）。 */
+export interface MockPlan {
+  id: number;
+  userId: number;
+  title: string;
+  startTime: string;
+  endTime: string;
+  allDay: PlanAllDay;
+  location: string | null;
+  note: string | null;
+  reminderMin: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** setupPlanDefaults 返回的可变状态，用于测试断言 mock 是否真的更新了。 */
+export interface PlanMockState {
+  list: PlanListItem[];
+  detail: Map<number, PlanResponse>;
+}
+
+function toPlanListItem(p: MockPlan): PlanListItem {
+  return {
+    id: p.id,
+    title: p.title,
+    startTime: p.startTime,
+    endTime: p.endTime,
+    allDay: p.allDay,
+    location: p.location,
+    reminderMin: p.reminderMin,
+  };
+}
+
+function toPlanResponse(p: MockPlan): PlanResponse {
+  return {
+    id: p.id,
+    userId: p.userId,
+    title: p.title,
+    startTime: p.startTime,
+    endTime: p.endTime,
+    allDay: p.allDay,
+    location: p.location,
+    note: p.note,
+    reminderMin: p.reminderMin,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
+/**
+ * 一站式 Plan mock：拦截 `/api/v1/plans**` 全部分支。
+ *
+ * <p>GET /plans 支持 from/to 范围查询（ISO-8601 local datetime）；
+ * 跨日事件用同一 from/to 仍能命中（按 startTime ∈ [from, to] 过滤，模拟
+ * 后端按 startTime 索引扫描）。POST 创建会自增 id 并写入 state.list。
+ *
+ * <p>state 闭包内可变：PUT/DELETE 立即更新 state 便于测试断言。
+ *
+ * <p>专项覆盖（如 mockPlanCrossUser）注册在更晚 → LIFO 优先生效。
+ */
+export async function setupPlanDefaults(
+  page: Page,
+  opts?: { userId?: number; plans?: MockPlan[] },
+): Promise<PlanMockState> {
+  const userId = opts?.userId ?? 1;
+  const initial = opts?.plans ?? [];
+  const state: PlanMockState = {
+    list: initial.map(toPlanListItem),
+    detail: new Map(initial.map((p) => [p.id, toPlanResponse(p)])),
+  };
+  let nextId = initial.reduce((m, p) => Math.max(m, p.id), 0) + 1;
+
+  await page.route('**/api/v1/plans**', async (route) => {
+    const req = route.request();
+    const method = req.method();
+    const url = new URL(req.url());
+    const path = url.pathname.replace(/^\/api\/v1/, '');
+
+    // GET /plans（带 from/to + page/size）
+    if (method === 'GET' && path === '/plans') {
+      const fromQ = url.searchParams.get('from');
+      const toQ = url.searchParams.get('to');
+      let items = state.list;
+      if (fromQ) items = items.filter((p) => p.startTime >= fromQ);
+      if (toQ) items = items.filter((p) => p.startTime <= toQ);
+      const page = Number(url.searchParams.get('page') ?? '1');
+      const size = Number(url.searchParams.get('size') ?? '20');
+      const body: PlanListResponse = { items, total: items.length, page, size };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(body),
+      });
+      return;
+    }
+
+    // GET /plans/{id}
+    const detailMatch = path.match(/^\/plans\/(\d+)$/);
+    if (method === 'GET' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const p = state.detail.get(id);
+      if (!p) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: envelopeErr(1004, 'plan not found'),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(p),
+      });
+      return;
+    }
+
+    // PUT /plans/{id}（null-skip 语义由前端保证）
+    if (method === 'PUT' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const body = JSON.parse(req.postData() ?? '{}') as PlanUpdateRequest;
+      const detail = state.detail.get(id);
+      const item = state.list.find((p) => p.id === id);
+      if (detail && item) {
+        if (body.title !== undefined) { detail.title = body.title; item.title = body.title; }
+        if (body.startTime !== undefined) { detail.startTime = body.startTime; item.startTime = body.startTime; }
+        if (body.endTime !== undefined) { detail.endTime = body.endTime; item.endTime = body.endTime; }
+        if (body.allDay !== undefined) { detail.allDay = body.allDay; item.allDay = body.allDay; }
+        if (body.location !== undefined) { detail.location = body.location; item.location = body.location; }
+        if (body.note !== undefined) { detail.note = body.note; }
+        if (body.reminderMin !== undefined) { detail.reminderMin = body.reminderMin; item.reminderMin = body.reminderMin; }
+        detail.updatedAt = new Date().toISOString();
+      }
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // DELETE /plans/{id}
+    if (method === 'DELETE' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      state.detail.delete(id);
+      state.list = state.list.filter((p) => p.id !== id);
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // POST /plans
+    if (method === 'POST' && path === '/plans') {
+      const body = JSON.parse(req.postData() ?? '{}') as PlanCreateRequest;
+      const now = new Date().toISOString();
+      const id = nextId++;
+      const created: PlanResponse = {
+        id,
+        userId,
+        title: body.title,
+        startTime: body.startTime,
+        endTime: body.endTime,
+        allDay: body.allDay ?? 0,
+        location: body.location ?? null,
+        note: body.note ?? null,
+        reminderMin: body.reminderMin ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.detail.set(id, created);
+      state.list = [...state.list, toPlanListItem(created)];
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: envelopeOk(created),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: envelopeErr(1004, 'not found'),
+    });
+  });
+
+  return state;
+}
+
+/**
+ * 跨用户越权：GET /plans/{id} 强制返回 1003。
+ *
+ * <p>注册时机：必须在 setupPlanDefaults 之后调用，LIFO 让更具体的 URL 模式先生效。
+ */
+export async function mockPlanCrossUser(page: Page, planId: number): Promise<void> {
+  await page.route(`**/api/v1/plans/${planId}`, async (route) => {
     await route.fulfill({
       status: 403,
       contentType: 'application/json',
