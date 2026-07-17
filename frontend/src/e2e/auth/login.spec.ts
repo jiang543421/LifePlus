@@ -37,7 +37,7 @@ test('登录成功 → 跳 / 并展示 greetingName', async ({ page }) => {
   await clickSubmit(page);
   await loginResp;
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL('http://localhost:5173/');
   await expect(page.locator('h1')).toContainText('alice');
 });
 
@@ -66,5 +66,5 @@ test('带 ?redirect=/ 时登录成功后跳回 /', async ({ page }) => {
   await loginResp;
 
   // ?redirect=/ 在登录成功后被消费，跳 /
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL('http://localhost:5173/');
 });

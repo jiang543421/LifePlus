@@ -31,7 +31,7 @@ test('登录后立即调 /users/me → HomeView 展示 nickname', async ({ page 
   // 等 /users/me 响应完成 → store.setUser 写入 → HomeView 重渲染
   await meResp;
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL('http://localhost:5173/');
   await expect(page.locator('h1')).toContainText('carol');
 });
 

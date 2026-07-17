@@ -40,7 +40,7 @@ test('注册成功 → 自动 login → 跳 /', async ({ page }) => {
   await clickSubmit(page);
   await meResp;
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL('http://localhost:5173/');
   await expect(page.locator('h1')).toContainText('新用户');
 });
 
