@@ -20,6 +20,10 @@ interface TaskState {
   error: string | null;
   /** 最近一次失败的 ApiError.code（用于视图 toast 选择文案）；null = 无业务码。 */
   errorCode: number | null;
+  /** 某 plan 下的任务（用于 PlanDetailView 等嵌入场景）；null = 未拉过。 */
+  byPlanTasks: TaskListItem[] | null;
+  byPlanLoading: boolean;
+  byPlanError: string | null;
 }
 
 /**
@@ -41,6 +45,9 @@ export const useTaskStore = defineStore('task', {
     loading: false,
     error: null,
     errorCode: null,
+    byPlanTasks: null,
+    byPlanLoading: false,
+    byPlanError: null,
   }),
   getters: {
     /** 任意过滤项非空 → true（page/size 单独不算过滤）。 */
@@ -81,6 +88,32 @@ export const useTaskStore = defineStore('task', {
         return null;
       } finally {
         this.loading = false;
+      }
+    },
+
+    /**
+     * 拉取某 plan 下的任务（GET /tasks/by-plan/{planId}）。失败时保留旧 byPlanTasks，写 byPlanError。
+     * 与 fetchList 独立 loading 状态 — 详情页可独立显示"关联任务加载中"而不阻塞 plan 主加载。
+     *
+     * <p>跨用户越权由后端 {@code user_id + plan_id} 联合过滤兜底，返回空列表而非 1003。
+     */
+    async fetchByPlan(planId: number): Promise<TaskListItem[] | null> {
+      this.byPlanLoading = true;
+      this.byPlanError = null;
+      try {
+        const items = await taskApi.byPlan(planId);
+        this.byPlanTasks = items;
+        return items;
+      } catch (e: unknown) {
+        if (e instanceof ApiError) {
+          this.byPlanError = e.message;
+        } else {
+          this.byPlanError = 'fetch by-plan tasks failed';
+        }
+        // 失败保留旧 byPlanTasks（避免空闪烁）
+        return null;
+      } finally {
+        this.byPlanLoading = false;
       }
     },
 
@@ -135,6 +168,8 @@ export const useTaskStore = defineStore('task', {
       this.total = 0;
       this.error = null;
       this.errorCode = null;
+      this.byPlanTasks = null;
+      this.byPlanError = null;
       this.filter = { page: 1, size: this.filter.size };
     },
   },
