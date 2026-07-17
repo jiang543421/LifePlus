@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useTaskStore } from './task';
 import { ApiError } from '@/api/http';
-import type { TaskListResponse, TaskResponse, TaskStatus } from '@/types';
+import type { TaskListItem, TaskListResponse, TaskResponse, TaskStatus } from '@/types';
 
 vi.mock('@/api/task', () => ({
   taskApi: {
@@ -227,5 +227,73 @@ describe('useTaskStore / fetchList errorCode 写入', () => {
     await store.fetchList();
     expect(store.errorCode).toBeNull();
     expect(store.error).toBeNull();
+  });
+});
+
+describe('useTaskStore / fetchByPlan', () => {
+  beforeEach(() => {
+    vi.mocked(taskApi.byPlan).mockReset();
+  });
+
+  it('默认 byPlanTasks=null，byPlanLoading=false，byPlanError=null', () => {
+    const store = useTaskStore();
+    expect(store.byPlanTasks).toBeNull();
+    expect(store.byPlanLoading).toBe(false);
+    expect(store.byPlanError).toBeNull();
+  });
+
+  it('成功：byPlanTasks 更新、byPlanLoading 翻转、byPlanError 清空', async () => {
+    const items: TaskListItem[] = [
+      { id: 1, title: '准备材料', status: 0, priority: 2, dueDate: '2026-08-15', tag: null },
+      { id: 2, title: '预订会议室', status: 1, priority: 1, dueDate: null, tag: 'work' },
+    ];
+    vi.mocked(taskApi.byPlan).mockResolvedValue(items);
+
+    const store = useTaskStore();
+    expect(store.byPlanLoading).toBe(false);
+    const resp = await store.fetchByPlan(7);
+    expect(store.byPlanLoading).toBe(false);
+    expect(store.byPlanTasks).toEqual(items);
+    expect(store.byPlanError).toBeNull();
+    expect(resp).toEqual(items);
+    expect(taskApi.byPlan).toHaveBeenCalledWith(7);
+  });
+
+  it('失败 ApiError：写 byPlanError、保留旧 byPlanTasks、loading 翻回 false', async () => {
+    const items: TaskListItem[] = [
+      { id: 1, title: '旧', status: 0, priority: 0, dueDate: null, tag: null },
+    ];
+    vi.mocked(taskApi.byPlan).mockResolvedValueOnce(items);
+
+    const store = useTaskStore();
+    await store.fetchByPlan(7);
+    expect(store.byPlanTasks).toEqual(items);
+
+    vi.mocked(taskApi.byPlan).mockRejectedValueOnce(new ApiError(1003, '无权操作该任务'));
+    const resp = await store.fetchByPlan(7);
+    expect(resp).toBeNull();
+    expect(store.byPlanError).toBe('无权操作该任务');
+    expect(store.byPlanTasks).toEqual(items);
+    expect(store.byPlanLoading).toBe(false);
+  });
+
+  it('失败非 ApiError：byPlanError 写通用消息', async () => {
+    vi.mocked(taskApi.byPlan).mockRejectedValueOnce(new Error('network down'));
+
+    const store = useTaskStore();
+    await store.fetchByPlan(7);
+    expect(store.byPlanError).toBe('fetch by-plan tasks failed');
+  });
+
+  it('再次成功：byPlanError 重置为 null', async () => {
+    vi.mocked(taskApi.byPlan).mockRejectedValueOnce(new ApiError(1004, 'no'));
+    const store = useTaskStore();
+    await store.fetchByPlan(7);
+    expect(store.byPlanError).toBe('no');
+
+    vi.mocked(taskApi.byPlan).mockResolvedValueOnce([]);
+    await store.fetchByPlan(7);
+    expect(store.byPlanError).toBeNull();
+    expect(store.byPlanTasks).toEqual([]);
   });
 });

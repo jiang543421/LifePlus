@@ -7,10 +7,11 @@ import PlanDetailView from '@/views/PlanDetailView.vue';
 import PlanCalendarView from '@/views/PlanCalendarView.vue';
 import { useAuthStore } from '@/stores/auth';
 import { planApi } from '@/api/plan';
+import { taskApi } from '@/api/task';
 import { ApiError } from '@/api/http';
 import { showAuthError } from '@/utils/error';
-import type { PlanResponse } from '@/types';
-import { PlanAllDayValue } from '@/types';
+import type { PlanResponse, TaskListItem } from '@/types';
+import { PlanAllDayValue, TaskStatusValue, TaskPriorityValue } from '@/types';
 
 vi.mock('@/api/plan', () => ({
   planApi: {
@@ -18,6 +19,18 @@ vi.mock('@/api/plan', () => ({
     get: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
+vi.mock('@/api/task', () => ({
+  taskApi: {
+    list: vi.fn(),
+    byPlan: vi.fn(),
+    get: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    patchStatus: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -94,6 +107,7 @@ beforeEach(() => {
   vi.mocked(planApi.get).mockReset();
   vi.mocked(planApi.update).mockReset();
   vi.mocked(planApi.delete).mockReset();
+  vi.mocked(taskApi.byPlan).mockReset();
   vi.mocked(showAuthError).mockReset();
 });
 
@@ -207,5 +221,52 @@ describe('PlanDetailView / 删除', () => {
     await flushPromises();
 
     expect(planApi.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('PlanDetailView / 关联任务区块（F-H03）', () => {
+  const sampleTask: TaskListItem = {
+    id: 42,
+    title: '准备材料',
+    status: TaskStatusValue.TODO,
+    priority: TaskPriorityValue.MEDIUM,
+    dueDate: null,
+    tag: null,
+  };
+
+  it('plan 加载成功后渲染 PlanTaskList，触发 fetchByPlan(plan.id)', async () => {
+    vi.mocked(planApi.get).mockResolvedValue(timedPlan);
+    vi.mocked(taskApi.byPlan).mockResolvedValue([]);
+
+    const w = await mountAt('7');
+    await flushPromises();
+
+    expect(w.find('[data-testid="related-tasks"]').exists()).toBe(true);
+    expect(taskApi.byPlan).toHaveBeenCalledWith(7);
+  });
+
+  it('点击关联任务行 → 路由跳转到 /tasks/{id}', async () => {
+    vi.mocked(planApi.get).mockResolvedValue(timedPlan);
+    vi.mocked(taskApi.byPlan).mockResolvedValue([sampleTask]);
+
+    const w = await mountAt('7');
+    await flushPromises();
+
+    const row = w.find('[data-testid="related-task-row"]');
+    expect(row.exists()).toBe(true);
+    await row.trigger('click');
+    await flushPromises();
+
+    expect((w.vm as unknown as { $route: { path: string } }).$route.path).toBe('/tasks/42');
+  });
+
+  it('plan 加载失败（1003）时不渲染关联任务区块', async () => {
+    vi.mocked(planApi.get).mockRejectedValue(new ApiError(1003, '无权操作'));
+    const w = await mountAt('7');
+    await flushPromises();
+
+    expect(w.find('[data-testid="plan-detail"]').exists()).toBe(false);
+    expect(w.find('[data-testid="related-tasks"]').exists()).toBe(false);
+    expect(taskApi.byPlan).not.toHaveBeenCalled();
   });
 });

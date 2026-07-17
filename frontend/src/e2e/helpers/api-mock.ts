@@ -365,6 +365,22 @@ export async function setupTaskDefaults(
       return;
     }
 
+    // GET /tasks/by-plan/{planId}（F-H03：PlanDetailView 嵌入关联任务）
+    const byPlanMatch = path.match(/^\/tasks\/by-plan\/(\d+)$/);
+    if (method === 'GET' && byPlanMatch) {
+      const planId = Number(byPlanMatch[1]);
+      // state.list 是 TaskListItem（无 planId 字段），必须从 detail 反查
+      const items = Array.from(state.detail.values())
+        .filter((t) => t.planId === planId)
+        .map(toListItem);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(items),
+      });
+      return;
+    }
+
     // PATCH /tasks/{id}/status
     const statusMatch = path.match(/^\/tasks\/(\d+)\/status$/);
     if (method === 'PATCH' && statusMatch) {

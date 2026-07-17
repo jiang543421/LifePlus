@@ -16,9 +16,11 @@ import { test, expect, type Page } from '@playwright/test';
 import {
   setupAuthDefaults,
   setupPlanDefaults,
+  setupTaskDefaults,
   mockPlanCrossUser,
   type MockUser,
   type MockPlan,
+  type MockTask,
 } from '../helpers/api-mock';
 import { clearStorage, fillLoginForm, clickSubmit, strongPassword } from '../helpers/test-fixtures';
 
@@ -224,4 +226,50 @@ test('跨用户 1003：Bob 直接访问 Alice 的 /plans/100 → 跳回 /plans',
   await page.goto('/plans/100');
   await page.waitForURL(/\/plans$/);
   await expect(page).toHaveURL(/\/plans$/);
+});
+
+test('详情页展示本日程下的关联任务（F-H03）：存在 2 条 task → 显示 2 行', async ({ page }) => {
+  const p = plan({ id: 7, title: '周会', startTime: '2026-07-15T10:00:00', endTime: '2026-07-15T11:00:00' });
+  // 两个关联任务：id 100、101，planId=7
+  const t1: MockTask = {
+    id: 100,
+    userId: ALICE.id,
+    planId: 7,
+    title: '准备材料',
+    status: 0,
+    priority: 2,
+    dueDate: '2026-07-15',
+    tag: 'work',
+    createdAt: FIXED_NOW,
+    updatedAt: FIXED_NOW,
+  };
+  const t2: MockTask = {
+    ...t1,
+    id: 101,
+    title: '预订会议室',
+    status: 1,
+    priority: 1,
+    dueDate: null,
+    tag: null,
+  };
+  await setupAuthDefaults(page, { user: ALICE });
+  await setupPlanDefaults(page, { userId: ALICE.id, plans: [p] });
+  await setupTaskDefaults(page, { userId: ALICE.id, tasks: [t1, t2] });
+
+  await loginAs(page, ALICE);
+  // 同时等待 by-plan 响应与跳转（响应在 goto 期间就到，waitForResponse 必须在 goto 之前订阅）
+  const [, byPlanResp] = await Promise.all([
+    page.goto('/plans/7'),
+    page.waitForResponse(
+      (r) => /\/api\/v1\/tasks\/by-plan\/7/.test(r.url()) && r.request().method() === 'GET',
+    ),
+  ]);
+  await expect(page.locator('[data-testid="plan-detail"]')).toBeVisible();
+
+  // 响应状态码应 200，且返回 2 条任务
+  expect(byPlanResp.status()).toBe(200);
+  const rows = page.locator('[data-testid="related-task-row"]');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('准备材料');
+  await expect(rows.nth(1)).toContainText('预订会议室');
 });
