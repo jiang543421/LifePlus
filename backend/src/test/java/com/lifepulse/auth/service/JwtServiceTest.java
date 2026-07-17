@@ -56,6 +56,35 @@ class JwtServiceTest {
     }
 
     @Test
+    void init_devDefaultSecretContainingReplaceMe_throwsIllegalState() {
+        // CLAUDE.md §7.1 + Review C-3: application.yml 默认密钥串（"replace-me"）
+        // 虽满足长度，但误部署即已知密钥。JwtService 启动时必须拒绝。
+        JwtProperties props = new JwtProperties();
+        props.setSecret("dev-only-secret-replace-me-32bytes-xxx"); // 41 chars (>32)
+        props.setAccessTtl(AuthConstants.ACCESS_TTL);
+        props.setRefreshTtl(AuthConstants.REFRESH_TTL);
+        JwtService svc = new JwtService(props);
+
+        assertThatThrownBy(svc::init)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("replace-me");
+    }
+
+    @Test
+    void init_placeholderSecretWithReplaceMeInMiddle_throwsIllegalState() {
+        // 包含 "replace-me" 的任何变体（不区分大小写）都应拒绝
+        JwtProperties props = new JwtProperties();
+        props.setSecret("please-REPLACE-ME-with-real-secret-padding-here"); // 44 chars
+        props.setAccessTtl(AuthConstants.ACCESS_TTL);
+        props.setRefreshTtl(AuthConstants.REFRESH_TTL);
+        JwtService svc = new JwtService(props);
+
+        assertThatThrownBy(svc::init)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("replace");
+    }
+
+    @Test
     void issueAccess_containsSubjectUserIdAndTyp() {
         // Act
         String token = jwtService.issueAccess(42L);
