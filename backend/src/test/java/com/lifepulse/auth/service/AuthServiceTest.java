@@ -1,5 +1,9 @@
 package com.lifepulse.auth.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.dto.LoginRequest;
@@ -13,12 +17,14 @@ import com.lifepulse.auth.repository.UserMapper;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.security.RateLimiter;
 import io.jsonwebtoken.Jwts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,11 +58,34 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     private AuthService authService;
 
+    private Logger authLogger;
+    private ListAppender<ILoggingEvent> logAppender;
+
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder(AuthConstants.BCRYPT_STRENGTH);
         authService = new AuthService(userMapper, refreshTokenMapper, passwordEncoder,
                 jwtService, rateLimiter);
+
+        // H-3：attach Logback ListAppender 到 AuthService logger，便于断言 WARN 审计
+        authLogger = (Logger) LoggerFactory.getLogger(AuthService.class);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        authLogger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (authLogger != null && logAppender != null) {
+            authLogger.detachAppender(logAppender);
+            logAppender.stop();
+        }
+    }
+
+    private boolean hasWarn(String fragment) {
+        return logAppender.list.stream()
+                .anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains(fragment));
     }
 
     // ---------- register ----------
@@ -267,6 +296,72 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+    }
+
+    // ---------- refresh audit (H-3) ----------
+    // CLAUDE.md §7.6：refresh 重放要打 WARN 审计日志。覆盖 4 条 1401 路径。
+
+    @Test
+    void refresh_jwtParseFails_logsWarnAudit() {
+        when(jwtService.parse("bogus.token")).thenThrow(
+                new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "invalid token"));
+        RefreshRequest req = new RefreshRequest("bogus.token");
+
+        assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
+                .isInstanceOf(BusinessException.class);
+        assertThat(hasWarn("refresh replay: jwt parse failed")).isTrue();
+    }
+
+    @Test
+    void refresh_wrongTyp_logsWarnAudit() {
+        // typ 不是 "refresh"（用 access typ 触发）
+        io.jsonwebtoken.Claims claims = Jwts.claims()
+                .subject(String.valueOf(7L))
+                .add("typ", "access")
+                .build();
+        when(jwtService.parse("raw.refresh.token")).thenReturn(claims);
+
+        RefreshRequest req = new RefreshRequest("raw.refresh.token");
+
+        assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+        assertThat(hasWarn("refresh replay: wrong typ")).isTrue();
+    }
+
+    @Test
+    void refresh_unknownOrRevokedHash_logsWarnAudit() {
+        when(jwtService.parse("raw.refresh.token")).thenReturn(stubRefreshClaims(7L));
+        when(refreshTokenMapper.findByHash(anyString())).thenReturn(null);
+
+        RefreshRequest req = new RefreshRequest("raw.refresh.token");
+
+        assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+        // 日志带 hash 前缀，便于关联但不暴露完整 hash
+        assertThat(hasWarn("refresh replay: token not found or revoked")).isTrue();
+        assertThat(hasWarn("hashPrefix=")).isTrue();
+    }
+
+    @Test
+    void refresh_expiredToken_logsWarnAudit() {
+        io.jsonwebtoken.Claims claims = stubRefreshClaims(7L);
+        when(jwtService.parse("raw.refresh.token")).thenReturn(claims);
+
+        RefreshToken stored = new RefreshToken();
+        stored.setUserId(7L);
+        stored.setTokenHash("any-hash");
+        stored.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
+        when(refreshTokenMapper.findByHash(anyString())).thenReturn(stored);
+
+        RefreshRequest req = new RefreshRequest("raw.refresh.token");
+
+        assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+        assertThat(hasWarn("refresh replay: expired")).isTrue();
+        assertThat(hasWarn("userId=7")).isTrue();
     }
 
     // ---------- logout ----------

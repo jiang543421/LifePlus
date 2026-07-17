@@ -137,12 +137,16 @@ public class AuthService {
         try {
             claims = jwtService.parse(req.refreshToken());
         } catch (BusinessException e) {
+            // H-3：refresh 重放审计（CLAUDE.md §7.6）。即使 JWT 校验失败也要留痕，
+            // 攻击者用伪造 token 探测接口时会触发此分支。
+            log.warn("refresh replay: jwt parse failed: {}", e.getMessage());
             throw e;
         }
 
         // 2. typ 必须为 refresh（防御 access token 被滥用）
         String typ = claims.get(CLAIM_TYP, String.class);
         if (!JwtService.TYP_REFRESH.equals(typ)) {
+            log.warn("refresh replay: wrong typ claim, got={}", typ);
             throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "not a refresh token");
         }
 
@@ -152,6 +156,9 @@ public class AuthService {
         String oldHash = sha256Hex(req.refreshToken());
         RefreshToken stored = refreshTokenMapper.findByHash(oldHash);
         if (stored == null || stored.getRevokedAt() != null) {
+            // 重放核心场景：旧 token 用过一次或被撤销后又拿来换新 token。
+            // 仅记 hash 前缀（SHA-256 前 8 hex），避免完整 hash 落入日志。
+            log.warn("refresh replay: token not found or revoked, hashPrefix={}", oldHash.substring(0, 8));
             throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "refresh revoked or unknown");
         }
 
@@ -163,6 +170,8 @@ public class AuthService {
 
         // 5. 过期校验
         if (stored.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            log.warn("refresh replay: expired, userId={}, hashPrefix={}",
+                    stored.getUserId(), oldHash.substring(0, 8));
             throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "refresh expired");
         }
 
