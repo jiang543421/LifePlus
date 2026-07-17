@@ -118,6 +118,56 @@ describe('TaskListView', () => {
     expect(taskApi.create).toHaveBeenCalledWith(expect.objectContaining({ title: '买牛奶' }));
   });
 
+  it('submit 成功后再次打开 dialog → title 为空（防陈旧值）', async () => {
+    // CLAUDE.md §4.1 + Review C-5: dialog 关闭/成功后必须重置 state，
+    // 否则用户再次打开会看到上次输入的脏值导致误提交
+    vi.mocked(taskApi.list).mockResolvedValue({ items: [], total: 0, page: 1, size: 20 });
+    vi.mocked(taskApi.create).mockResolvedValue({
+      id: 1, userId: 1, planId: null, title: 't', status: 0, priority: 0,
+      dueDate: null, tag: null,
+      createdAt: '2026-07-16T10:00:00+08:00', updatedAt: '2026-07-16T10:00:00+08:00',
+    });
+
+    const w = await mountView();
+    // 第 1 次：填表 + 提交
+    await w.find('[data-testid="new-task"]').trigger('click');
+    await flushPromises();
+    await w.find('[data-testid="new-title"] input').setValue('买牛奶');
+    await w.find('[data-testid="new-submit"]').trigger('click');
+    await flushPromises();
+
+    // 第 2 次：再打开 dialog，title 应为空
+    await w.find('[data-testid="new-task"]').trigger('click');
+    await flushPromises();
+    const titleInput2 = w.find('[data-testid="new-title"] input');
+    expect((titleInput2.element as HTMLInputElement).value).toBe('');
+  });
+
+  it('openCreate 每次返回新对象（不 mutate 旧对象 — §4.1 不可变）', async () => {
+    // 通过内部组件实例访问 newTask 引用，验证 openCreate 用整体替换
+    // 而非逐字段 mutation（review C-5 的核心修复点）。
+    // 注：Vue Test Utils 在 vm proxy 上会自动 unwrap ref，所以这里访问的就是对象本身。
+    vi.mocked(taskApi.list).mockResolvedValue({ items: [], total: 0, page: 1, size: 20 });
+    const w = await mountView();
+    const vm = w.vm as unknown as {
+      newTask: { title: string };
+      openCreate: () => void;
+    };
+    // 第 1 次打开：拿到原始引用
+    vm.openCreate();
+    await flushPromises();
+    const first = vm.newTask;
+    expect(first.title).toBe('');
+    // 修改 dialog 内输入
+    first.title = '脏值';
+    // 第 2 次打开：应替换为新对象（first.title 仍是"脏值"，新对象 title=''）
+    vm.openCreate();
+    await flushPromises();
+    expect(vm.newTask).not.toBe(first);
+    expect(vm.newTask.title).toBe('');
+    expect(first.title).toBe('脏值'); // 旧对象未被 mutate
+  });
+
   it('store.setPage 更新 filter.page（视图层通过 onPageChange 调用 refresh）', async () => {
     vi.mocked(taskApi.list).mockResolvedValue({ items: [], total: 0, page: 1, size: 20 });
     await mountView();

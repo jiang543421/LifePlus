@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, ElButton, ElInput, ElDialog, ElForm, ElFormItem, ElSelect, ElOption, ElDatePicker } from 'element-plus';
 import { useTaskStore } from '@/stores/task';
@@ -81,25 +81,29 @@ async function onRemove(id: number): Promise<void> {
 }
 
 // 新建任务 dialog
+// CLAUDE.md §4.1 + Review C-5: 用整体替换而非逐字段 mutation，
+// 避免 dialog 状态脏读（再次打开看到上次输入）。
 const dialogOpen = ref(false);
 const submitting = ref(false);
-const newTask = reactive<TaskCreateRequest>({
-  title: '',
-  priority: TaskPriorityValue.NONE,
-  dueDate: null,
-  tag: null,
-});
+
+function createDefaultTask(): TaskCreateRequest {
+  return {
+    title: '',
+    priority: TaskPriorityValue.NONE,
+    dueDate: null,
+    tag: null,
+  };
+}
+
+const newTask = ref<TaskCreateRequest>(createDefaultTask());
 
 function openCreate(): void {
-  newTask.title = '';
-  newTask.priority = TaskPriorityValue.NONE;
-  newTask.dueDate = null;
-  newTask.tag = null;
+  newTask.value = createDefaultTask();
   dialogOpen.value = true;
 }
 
 async function submitCreate(): Promise<void> {
-  const title = newTask.title.trim();
+  const title = newTask.value.title.trim();
   if (!title) {
     ElMessage({ message: '请输入任务标题', type: 'warning' });
     return;
@@ -108,11 +112,13 @@ async function submitCreate(): Promise<void> {
   try {
     await store.create({
       title,
-      priority: newTask.priority,
-      dueDate: newTask.dueDate,
-      tag: newTask.tag?.trim() || null,
+      priority: newTask.value.priority,
+      dueDate: newTask.value.dueDate,
+      tag: newTask.value.tag?.trim() || null,
     });
     dialogOpen.value = false;
+    // 成功后整体替换，避免下次打开 dialog 时残留陈旧字段
+    newTask.value = createDefaultTask();
     ElMessage({ message: '已创建', type: 'success' });
     void refresh();
   } catch (e) {
