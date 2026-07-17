@@ -22,11 +22,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -109,6 +111,8 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_BAD_CREDENTIALS);
         verify(jwtService, never()).issueAccess(any());
+        // C-2: email 不存在也计为失败 → rate-limit hit 应被调用
+        verify(rateLimiter, times(1)).hit(anyString(), anyInt(), any());
     }
 
     @Test
@@ -127,6 +131,47 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_BAD_CREDENTIALS);
         verify(jwtService, never()).issueAccess(any());
+        // C-2: 密码错误才计 rate-limit
+        verify(rateLimiter, times(1)).hit(anyString(), anyInt(), any());
+    }
+
+    @Test
+    void login_validCredentials_doesNotCountRateLimit() {
+        // Arrange: 成功登录不应触发 rate-limit 计数（spec §7.2 只计失败）
+        User u = new User();
+        u.setId(7L);
+        u.setEmail("alice@example.com");
+        u.setPasswordHash(passwordEncoder.encode("Valid1Pass"));
+        when(userMapper.findByEmail("alice@example.com")).thenReturn(u);
+        when(jwtService.issueAccess(7L)).thenReturn("access.jwt.value");
+        when(jwtService.issueRefresh(7L)).thenReturn("refresh.jwt.value");
+
+        LoginRequest req = new LoginRequest("alice@example.com", "Valid1Pass");
+
+        // Act
+        AuthResponse resp = authService.login(req, "127.0.0.1");
+
+        // Assert
+        assertThat(resp.accessToken()).isEqualTo("access.jwt.value");
+        verify(rateLimiter, never()).hit(anyString(), anyInt(), any());
+    }
+
+    @Test
+    void login_wrongPassword_rateLimitExceeded_throws1006() {
+        // Arrange: 密码错 + rate-limit 已超限 → 抛 1006（不让攻击者继续试）
+        User u = new User();
+        u.setId(7L);
+        u.setEmail("alice@example.com");
+        u.setPasswordHash(passwordEncoder.encode("Correct1Pass"));
+        when(userMapper.findByEmail("alice@example.com")).thenReturn(u);
+        when(rateLimiter.hit(anyString(), anyInt(), any())).thenReturn(true);
+
+        LoginRequest req = new LoginRequest("alice@example.com", "Wrong1Pass");
+
+        // Act + Assert
+        assertThatThrownBy(() -> authService.login(req, "127.0.0.1"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_LOGIN_RATE_LIMIT);
     }
 
     @Test
