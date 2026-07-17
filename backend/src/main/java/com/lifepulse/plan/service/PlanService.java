@@ -1,7 +1,7 @@
 package com.lifepulse.plan.service;
 
-import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.web.PageResponse;
 import com.lifepulse.plan.dto.PlanCreateRequest;
 import com.lifepulse.plan.dto.PlanFilter;
@@ -23,7 +23,7 @@ import java.util.List;
  *
  * <p>所有公开方法以 {@link UserContext#current()} 取当前用户 id；
  * 跨用户越权（不存在/不属于当前 user/已软删）一律抛
- * {@link BusinessException}{@code (AuthConstants.ERR_CROSS_USER)}，禁止用
+ * {@link BusinessException}{@code (ErrorCode.CROSS_USER)}，禁止用
  * {@code Optional.empty()} 隐式掩盖（CLAUDE.md §4.5）。
  *
  * <p><b>all_day 归一化</b>（CLAUDE.md Phase 3 决策）：{@code create} 与
@@ -86,7 +86,7 @@ public class PlanService {
                 .map(PlanResponse::from)
                 .orElseThrow(() -> {
                     log.warn("plan get cross-user or missing uid={} id={}", userId, id);
-                    return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该计划");
+                    return new BusinessException(ErrorCode.CROSS_USER, "无权操作该计划");
                 });
     }
 
@@ -101,7 +101,7 @@ public class PlanService {
         Plan p = mapper.findByUserAndId(userId, id)
                 .orElseThrow(() -> {
                     log.warn("plan update cross-user or missing uid={} id={}", userId, id);
-                    return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该计划");
+                    return new BusinessException(ErrorCode.CROSS_USER, "无权操作该计划");
                 });
 
         if (req.title() != null) p.setTitle(req.title());
@@ -130,7 +130,7 @@ public class PlanService {
         Plan p = mapper.findByUserAndId(userId, id)
                 .orElseThrow(() -> {
                     log.warn("plan softDelete cross-user or missing uid={} id={}", userId, id);
-                    return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该计划");
+                    return new BusinessException(ErrorCode.CROSS_USER, "无权操作该计划");
                 });
         mapper.deleteById(p.getId());
         log.debug("plan softDelete uid={} id={}", userId, id);
@@ -161,7 +161,7 @@ public class PlanService {
     private Long requireUserId() {
         Long userId = UserContext.current();
         if (userId == null) {
-            throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "未登录");
+            throw new BusinessException(ErrorCode.BAD_CREDENTIALS, "未登录");
         }
         return userId;
     }
@@ -172,7 +172,7 @@ public class PlanService {
      */
     private void validateTimeRange(LocalDateTime start, LocalDateTime end) {
         if (start == null || end == null || !end.isAfter(start)) {
-            throw new BusinessException(AuthConstants.ERR_VALIDATION, "结束时间必须晚于开始时间");
+            throw new BusinessException(ErrorCode.VALIDATION, "结束时间必须晚于开始时间");
         }
     }
 

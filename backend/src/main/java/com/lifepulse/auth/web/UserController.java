@@ -1,10 +1,10 @@
 package com.lifepulse.auth.web;
 
-import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.auth.dto.UserResponse;
 import com.lifepulse.auth.entity.User;
 import com.lifepulse.auth.repository.UserMapper;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.web.MyResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,11 +36,11 @@ public class UserController {
     public MyResponse<UserResponse> me(@AuthenticationPrincipal Long userId) {
         if (userId == null) {
             // 防御：理论上 SecurityFilterChain 已挡住未认证请求，到达此处说明配置异常
-            throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "未登录");
+            throw new BusinessException(ErrorCode.BAD_CREDENTIALS, "未登录");
         }
         User user = userMapper.selectById(userId);
         if (user == null) {
-            throw new BusinessException(AuthConstants.ERR_NOT_FOUND, "user not found");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "user not found");
         }
         return MyResponse.ok(UserResponse.from(user));
     }

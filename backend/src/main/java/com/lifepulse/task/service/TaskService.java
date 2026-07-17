@@ -1,7 +1,7 @@
 package com.lifepulse.task.service;
 
-import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.web.PageResponse;
 import com.lifepulse.security.UserContext;
 import com.lifepulse.task.dto.TaskCreateRequest;
@@ -23,7 +23,7 @@ import java.util.List;
  *
  * <p>所有公开方法以 {@link UserContext#current()} 取当前用户 id；
  * 跨用户越权（不存在/不属于当前 user/已软删）一律抛
- * {@link BusinessException}{@code (AuthConstants.ERR_CROSS_USER)}，禁止用
+ * {@link BusinessException}{@code (ErrorCode.CROSS_USER)}，禁止用
  * {@code Optional.empty()} 隐式掩盖（CLAUDE.md §4.5）。
  *
  * <p>构造器显式注入（与 {@code AuthService} 同款），便于单测手写 mock；
@@ -80,7 +80,7 @@ public class TaskService {
                 .map(TaskResponse::from)
                 .orElseThrow(() -> {
                     log.warn("task get cross-user or missing uid={} id={}", userId, id);
-                    return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务");
+                    return new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务");
                 });
     }
 
@@ -95,7 +95,7 @@ public class TaskService {
         Task t = mapper.findByUserAndId(userId, id)
                 .orElseThrow(() -> {
                     log.warn("task update cross-user or missing uid={} id={}", userId, id);
-                    return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务");
+                    return new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务");
                 });
 
         if (req.title() != null) t.setTitle(req.title());
@@ -125,7 +125,7 @@ public class TaskService {
         int rows = mapper.updateStatusByUser(userId, id, status);
         if (rows == 0) {
             log.warn("task patchStatus no-match uid={} id={} status={}", userId, id, status);
-            throw new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务");
+            throw new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务");
         }
         log.debug("task patchStatus uid={} id={} status={}", userId, id, status);
     }
@@ -141,7 +141,7 @@ public class TaskService {
         Task t = mapper.findByUserAndId(userId, id)
                 .orElseThrow(() -> {
                     log.warn("task softDelete cross-user or missing uid={} id={}", userId, id);
-                    return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务");
+                    return new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务");
                 });
         mapper.deleteById(t.getId());
         log.debug("task softDelete uid={} id={}", userId, id);
@@ -188,7 +188,7 @@ public class TaskService {
     private Long requireUserId() {
         Long userId = UserContext.current();
         if (userId == null) {
-            throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "未登录");
+            throw new BusinessException(ErrorCode.BAD_CREDENTIALS, "未登录");
         }
         return userId;
     }
@@ -202,7 +202,7 @@ public class TaskService {
         if (planId == null) return;
         planMapper.findByUserAndId(userId, planId).orElseThrow(() -> {
             log.warn("task plan cross-user uid={} planId={}", userId, planId);
-            return new BusinessException(AuthConstants.ERR_CROSS_USER, "无权关联该日程");
+            return new BusinessException(ErrorCode.CROSS_USER, "无权关联该日程");
         });
     }
 }

@@ -1,5 +1,7 @@
 package com.lifepulse.auth;
 
+import com.lifepulse.common.exception.ErrorCode;
+
 import java.time.Duration;
 
 /**
@@ -51,12 +53,14 @@ public final class AuthConstants {
           + "return cur";
 
     // 业务错误码（spec §03；与 GlobalExceptionHandler 1.3 配合）
+    // Review H-6：实际定义在 common.exception.ErrorCode，此处保留兼容 shim，
+    // 跨模块（task / plan）请直接 import ErrorCode。
 
-    public static final int ERR_VALIDATION = 1001;
-    public static final int ERR_BAD_CREDENTIALS = 1002;
-    public static final int ERR_CROSS_USER = 1003;
-    public static final int ERR_NOT_FOUND = 1004;
-    public static final int ERR_EMAIL_TAKEN = 1005;
-    public static final int ERR_LOGIN_RATE_LIMIT = 1006;
-    public static final int ERR_REFRESH_INVALID = 1401;
+    public static final int ERR_VALIDATION = ErrorCode.VALIDATION;
+    public static final int ERR_BAD_CREDENTIALS = ErrorCode.BAD_CREDENTIALS;
+    public static final int ERR_CROSS_USER = ErrorCode.CROSS_USER;
+    public static final int ERR_NOT_FOUND = ErrorCode.NOT_FOUND;
+    public static final int ERR_EMAIL_TAKEN = ErrorCode.EMAIL_TAKEN;
+    public static final int ERR_LOGIN_RATE_LIMIT = ErrorCode.LOGIN_RATE_LIMIT;
+    public static final int ERR_REFRESH_INVALID = ErrorCode.REFRESH_INVALID;
 }

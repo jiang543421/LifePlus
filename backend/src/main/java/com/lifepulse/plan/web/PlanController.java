@@ -1,7 +1,7 @@
 package com.lifepulse.plan.web;
 
-import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.web.MyResponse;
 import com.lifepulse.common.web.PageResponse;
 import com.lifepulse.plan.PlanConstants;
@@ -108,10 +108,10 @@ public class PlanController {
 
     private static void validatePage(int page, int size) {
         if (page < 1) {
-            throw new BusinessException(AuthConstants.ERR_VALIDATION, "page must be >= 1");
+            throw new BusinessException(ErrorCode.VALIDATION, "page must be >= 1");
         }
         if (size < 1 || size > PlanConstants.MAX_PAGE_SIZE) {
-            throw new BusinessException(AuthConstants.ERR_VALIDATION,
+            throw new BusinessException(ErrorCode.VALIDATION,
                     "size must be in [1, " + PlanConstants.MAX_PAGE_SIZE + "]");
         }
     }
