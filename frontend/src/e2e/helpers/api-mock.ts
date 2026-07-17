@@ -11,6 +11,14 @@
  * 这种叠加写法的预期是后者覆盖前者的 login handler——已验证。
  */
 import type { Page } from '@playwright/test';
+import type {
+  TaskCreateRequest,
+  TaskListItem,
+  TaskListResponse,
+  TaskResponse,
+  TaskStatus,
+  TaskUpdateRequest,
+} from '@/types';
 
 interface Tokens {
   accessToken: string;
@@ -22,6 +30,26 @@ export interface MockUser {
   id: number;
   email: string;
   nickname: string | null;
+}
+
+/** 单任务 mock 数据（POST/GET /tasks* 的完整结构）。 */
+export interface MockTask {
+  id: number;
+  userId: number;
+  planId: number | null;
+  title: string;
+  status: TaskStatus;
+  priority: 0 | 1 | 2 | 3;
+  dueDate: string | null;
+  tag: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** setupTaskDefaults 返回的可变状态，用于测试断言 mock 是否真的更新了。 */
+export interface TaskMockState {
+  list: TaskListItem[];
+  detail: Map<number, TaskResponse>;
 }
 
 const DEFAULT_TOKENS: Tokens = {
@@ -42,6 +70,32 @@ function envelopeOk<T>(data: T): string {
 
 function envelopeErr(code: number, message: string): string {
   return JSON.stringify({ code, message });
+}
+
+function toListItem(t: MockTask): TaskListItem {
+  return {
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    priority: t.priority,
+    dueDate: t.dueDate,
+    tag: t.tag,
+  };
+}
+
+function toResponse(t: MockTask): TaskResponse {
+  return {
+    id: t.id,
+    userId: t.userId,
+    planId: t.planId,
+    title: t.title,
+    status: t.status,
+    priority: t.priority,
+    dueDate: t.dueDate,
+    tag: t.tag,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  };
 }
 
 /**
@@ -228,6 +282,174 @@ export async function mockRefreshInvalid(
       status,
       contentType: 'application/json',
       body: envelopeErr(code, message ?? 'refresh invalid'),
+    });
+  });
+}
+
+// ----------------------------------------------------------------------
+// Task 模块 mock（Phase 2-G）
+// ----------------------------------------------------------------------
+
+/**
+ * 一站式 Task mock：拦截 `/api/v1/tasks**` 全部分支。
+ *
+ * <p>GET /tasks 支持 query 过滤（status / priority / tag / dueFrom / dueTo / page / size），
+ * 用于断言列表筛选 E2E。POST 创建会自增 id 并写入 state.list。
+ *
+ * <p>state 闭包内可变：PATCH/PUT/DELETE 立即更新 state 便于测试断言。
+ *
+ * <p>专项覆盖（如 mockTaskCrossUser）注册在更晚 → LIFO 优先生效。
+ */
+export async function setupTaskDefaults(
+  page: Page,
+  opts?: { userId?: number; tasks?: MockTask[] },
+): Promise<TaskMockState> {
+  const userId = opts?.userId ?? 1;
+  const initial = opts?.tasks ?? [];
+  const state: TaskMockState = {
+    list: initial.map(toListItem),
+    detail: new Map(initial.map((t) => [t.id, toResponse(t)])),
+  };
+  let nextId = initial.reduce((m, t) => Math.max(m, t.id), 0) + 1;
+
+  await page.route('**/api/v1/tasks**', async (route) => {
+    const req = route.request();
+    const method = req.method();
+    const url = new URL(req.url());
+    const path = url.pathname.replace(/^\/api\/v1/, '');
+
+    // GET /tasks（带 query 过滤）
+    if (method === 'GET' && path === '/tasks') {
+      const statusQ = url.searchParams.get('status');
+      const priorityQ = url.searchParams.get('priority');
+      const tagQ = url.searchParams.get('tag');
+      let items = state.list;
+      if (statusQ !== null) items = items.filter((t) => String(t.status) === statusQ);
+      if (priorityQ !== null) items = items.filter((t) => String(t.priority) === priorityQ);
+      if (tagQ) items = items.filter((t) => t.tag === tagQ);
+      const page = Number(url.searchParams.get('page') ?? '1');
+      const size = Number(url.searchParams.get('size') ?? '20');
+      const body: TaskListResponse = { items, total: items.length, page, size };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(body),
+      });
+      return;
+    }
+
+    // GET /tasks/{id}
+    const detailMatch = path.match(/^\/tasks\/(\d+)$/);
+    if (method === 'GET' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const t = state.detail.get(id);
+      if (!t) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: envelopeErr(1004, 'task not found'),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(t),
+      });
+      return;
+    }
+
+    // PATCH /tasks/{id}/status
+    const statusMatch = path.match(/^\/tasks\/(\d+)\/status$/);
+    if (method === 'PATCH' && statusMatch) {
+      const id = Number(statusMatch[1]);
+      const body = JSON.parse(req.postData() ?? '{}') as { status: TaskStatus };
+      const detail = state.detail.get(id);
+      const item = state.list.find((t) => t.id === id);
+      if (detail && item) {
+        detail.status = body.status;
+        item.status = body.status;
+        detail.updatedAt = new Date().toISOString();
+      }
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // PUT /tasks/{id}（null-skip 语义由前端保证）
+    if (method === 'PUT' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const body = JSON.parse(req.postData() ?? '{}') as TaskUpdateRequest;
+      const detail = state.detail.get(id);
+      const item = state.list.find((t) => t.id === id);
+      if (detail && item) {
+        if (body.title !== undefined) { detail.title = body.title; item.title = body.title; }
+        if (body.status !== undefined) { detail.status = body.status; item.status = body.status; }
+        if (body.priority !== undefined) { detail.priority = body.priority; item.priority = body.priority; }
+        if (body.dueDate !== undefined) { detail.dueDate = body.dueDate; item.dueDate = body.dueDate; }
+        if (body.tag !== undefined) { detail.tag = body.tag; item.tag = body.tag; }
+        detail.updatedAt = new Date().toISOString();
+      }
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // DELETE /tasks/{id}
+    if (method === 'DELETE' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      state.detail.delete(id);
+      state.list = state.list.filter((t) => t.id !== id);
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // POST /tasks
+    if (method === 'POST' && path === '/tasks') {
+      const body = JSON.parse(req.postData() ?? '{}') as TaskCreateRequest;
+      const now = new Date().toISOString();
+      const id = nextId++;
+      const created: TaskResponse = {
+        id,
+        userId,
+        planId: body.planId ?? null,
+        title: body.title,
+        status: 0,
+        priority: body.priority ?? 0,
+        dueDate: body.dueDate ?? null,
+        tag: body.tag ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.detail.set(id, created);
+      state.list = [...state.list, toListItem(created)];
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: envelopeOk(created),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: envelopeErr(1004, 'not found'),
+    });
+  });
+
+  return state;
+}
+
+/**
+ * 跨用户越权：GET /tasks/{id} 强制返回 1003。
+ *
+ * <p>注册时机：必须在 setupTaskDefaults 之后调用，LIFO 让更具体的 URL 模式先生效。
+ */
+export async function mockTaskCrossUser(page: Page, taskId: number): Promise<void> {
+  await page.route(`**/api/v1/tasks/${taskId}`, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: envelopeErr(1003, 'cross user denied'),
     });
   });
 }
