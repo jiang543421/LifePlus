@@ -211,45 +211,47 @@ function onSubmit(): void {
       </el-form-item>
 
       <el-form-item label="开始">
-        <el-date-picker
-          v-if="form.allDay === PlanAllDayValue.TIMED"
-          v-model="form.start"
-          type="datetime"
-          placeholder="开始时间"
-          :value-format="DATETIME_FMT"
-          data-testid="event-start"
-          style="width: 100%"
-        />
-        <el-date-picker
-          v-else
-          v-model="form.start"
-          type="date"
-          placeholder="开始日期"
-          :value-format="DATE_FMT"
-          data-testid="event-start-date"
-          style="width: 100%"
-        />
+        <div data-testid="event-start">
+          <el-date-picker
+            v-if="form.allDay === PlanAllDayValue.TIMED"
+            v-model="form.start"
+            type="datetime"
+            placeholder="开始时间"
+            :value-format="DATETIME_FMT"
+            style="width: 100%"
+          />
+          <el-date-picker
+            v-else
+            v-model="form.start"
+            type="date"
+            placeholder="开始日期"
+            :value-format="DATE_FMT"
+            data-testid="event-start-date"
+            style="width: 100%"
+          />
+        </div>
       </el-form-item>
 
       <el-form-item label="结束">
-        <el-date-picker
-          v-if="form.allDay === PlanAllDayValue.TIMED"
-          v-model="form.end"
-          type="datetime"
-          placeholder="结束时间"
-          :value-format="DATETIME_FMT"
-          data-testid="event-end"
-          style="width: 100%"
-        />
-        <el-date-picker
-          v-else
-          v-model="form.end"
-          type="date"
-          placeholder="结束日期"
-          :value-format="DATE_FMT"
-          data-testid="event-end-date"
-          style="width: 100%"
-        />
+        <div data-testid="event-end">
+          <el-date-picker
+            v-if="form.allDay === PlanAllDayValue.TIMED"
+            v-model="form.end"
+            type="datetime"
+            placeholder="结束时间"
+            :value-format="DATETIME_FMT"
+            style="width: 100%"
+          />
+          <el-date-picker
+            v-else
+            v-model="form.end"
+            type="date"
+            placeholder="结束日期"
+            :value-format="DATE_FMT"
+            data-testid="event-end-date"
+            style="width: 100%"
+          />
+        </div>
       </el-form-item>
 
       <el-form-item label="地点">
