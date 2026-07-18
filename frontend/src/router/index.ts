@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
-// Phase 1.4 只落地 /login /register /home 占位；任务/日程/设置视图留到 Phase 2/3。
+// Phase 1.4 只落地 /login /register /home 占位；任务/日程/设置视图留到 Phase 2/3/4。
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true, title: '登录' } },
   { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { public: true, title: '注册' } },
@@ -12,6 +12,8 @@ const routes: RouteRecordRaw[] = [
   // spec §04 §2：/plans /plans/:id 都需登录；:id 限定数字避免 catch-all 误吞。
   { path: '/plans', name: 'plans', component: () => import('@/views/PlanCalendarView.vue'), meta: { title: '日程' } },
   { path: '/plans/:id(\\d+)', name: 'plan-detail', component: () => import('@/views/PlanDetailView.vue'), meta: { title: '日程详情' } },
+  // Phase 4 P4-5：/settings MVP1 空态，需登录；具体功能 v1.1 上线。
+  { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { title: '设置' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 
