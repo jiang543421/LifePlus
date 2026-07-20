@@ -165,8 +165,9 @@ test('点击顶栏设置图标 → 跳转 /settings', async ({ page }) => {
   await page.locator('[data-testid="topbar-settings-link"]').first().click();
   await page.waitForURL(/\/settings$/);
   await expect(page).toHaveURL('http://localhost:5173/settings');
-  // 落地到 SettingsView 空态
-  await expect(page.locator('[data-testid="settings-empty"]')).toBeVisible();
+  // v1.0.1+ SettingsView 已无 empty 态：落地点改为首个真实 card（settings-profile-card）。
+  // 验证卡片可见即代表 SettingsView 已挂载。
+  await expect(page.locator('[data-testid="settings-profile-card"]')).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
