@@ -87,9 +87,28 @@ LifePulse/
 | `pnpm build` | 构建生产产物（输出 `dist/`） |
 | `pnpm exec playwright test` | E2E（须 backend 已在 8080 监听） |
 
-## 4. 种子账号
+## 4. 种子账号（R-006 v1.0.1）
 
-种子账号将在 Phase 5（R-006）随 Flyway V4 引入；目前请通过注册接口创建首个账号。
+dev / test 环境 Flyway V5 自动注入 2 个 demo 账号（密码 `Demo123!`）：
+
+| email | nickname | 密码 |
+|---|---|---|
+| `demo@lifepulse.test` | `demo` | `Demo123!` |
+| `alice@lifepulse.test` | `alice` | `Demo123!` |
+
+**启用机制**：
+
+- `application-dev.yml` 把 `classpath:db/seed` 加入 `spring.flyway.locations`，dev 启动自动跑 V5
+- 默认 `application.yml` 仅 `classpath:db/migration`（V1-V4），**prod 不会加载 seed**
+- prod 想 opt-in：注入 `LP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed`
+
+**幂等性**：V5 用 `INSERT ... WHERE NOT EXISTS`，多次启动不会产生重复行；想换密码重哈希：
+
+```bash
+cd backend && mvn -q test -Dtest=HashGen  # 控制台打印新 hash，粘到 V5 SQL
+```
+
+详见 `docs/issues/2026-07-18-r006-flyway-seed-account.md`。
 
 ## 5. 安全提示
 

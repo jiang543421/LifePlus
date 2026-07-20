@@ -1,0 +1,8 @@
+# =============================================================
+# Dev profile (R-006)
+# 启用 Flyway seed（V5__seed_demo_accounts.sql）。
+# prod 不加载本文件；想 opt-in：注入 LP_FLYWAY_LOCATIONS 追加 classpath:db/seed。
+# =============================================================
+spring:
+    flyway:
+        locations: classpath:db/migration,classpath:db/seed

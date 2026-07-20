@@ -10,3 +10,18 @@
 - [ ] 新增 `UserIT.seedAccounts_loginWithSeededEmail_returns200` 覆盖 happy path
 
 **Refs**：RELEASES/v1.0.0-mvp.md §5.1 / #5 R-006
+
+---
+
+## v1.0.1 完成度
+
+| AC | 状态 | 落地位置 |
+|---|---|---|
+| V5 迁移 + BCrypt strength=10 哈希 + 2 demo 账号 + 幂等 WHERE NOT EXISTS | ✅ | `backend/src/main/resources/db/seed/V5__seed_demo_accounts.sql` |
+| 仅 dev 启用（`application-dev.yml` 加载 seed 目录） | ✅ | `backend/src/main/resources/application-dev.yml` |
+| CI (`mvn verify`) 能跑过 | ✅ | `mvn verify` BUILD SUCCESS，71/71 IT 全绿 |
+| `UserIT.seedAccounts_loginWithSeededEmail_returns200` happy path | ✅ | `backend/src/test/java/com/lifepulse/auth/web/UserIT.java`（4 用例） |
+
+**完成时间**：2026-07-20
+**完成版本**：v1.0.1（随 settings / v1.2.1 链路上合并）
+**完整交付**：见 `RELEASES/v1.2.1.md`（未来单独发 v1.0.1 patch tag 时引用本 issue）
