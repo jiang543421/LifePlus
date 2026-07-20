@@ -12,6 +12,11 @@
  */
 import type { Page } from '@playwright/test';
 import type {
+  CreateDietRequest,
+  DietListResponse,
+  DietResponse,
+  DietSummary,
+  MealType,
   PlanAllDay,
   PlanCreateRequest,
   PlanListItem,
@@ -24,6 +29,7 @@ import type {
   TaskResponse,
   TaskStatus,
   TaskUpdateRequest,
+  UpdateDietRequest,
 } from '@/types';
 
 interface Tokens {
@@ -884,6 +890,221 @@ export async function setupExpenseDefaults(
  */
 export async function mockExpenseCrossUser(page: Page, expenseId: number): Promise<void> {
   await page.route(`**/api/v1/expenses/${expenseId}`, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: envelopeErr(1003, 'cross user denied'),
+    });
+  });
+}
+
+// ----------------------------------------------------------------------
+// Diet 模块 mock（v1.2.2）
+// ----------------------------------------------------------------------
+
+/** 单饮食 mock 数据（POST/GET /diets* 的完整结构）。 */
+export interface MockDiet {
+  id: number;
+  userId: number;
+  mealType: MealType;
+  name: string;
+  kcal: number;
+  proteinG: number;
+  carbG: number;
+  fatG: number;
+  note: string | null;
+  occurredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** setupDietDefaults 返回的可变状态，用于测试断言 mock 是否真的更新了。 */
+export interface DietMockState {
+  list: MockDiet[];
+  detail: Map<number, MockDiet>;
+}
+
+/**
+ * 一站式 Diet mock：拦截 `/api/v1/diets**` 全部分支。
+ *
+ * <p>GET /diets 支持 mealType/from/to/page/size 过滤；
+ * GET /diets/summary?date=YYYY-MM-DD 累计当日 4 项营养；
+ * GET /diets/frequent?from=&to=&limit= 返回空数组（默认）；
+ * POST 自增 id；PATCH / DELETE 立即更新 state。
+ *
+ * <p>真实后端契约由 {@code backend/.../DietServiceIT.java}（Testcontainers）覆盖。
+ */
+export async function setupDietDefaults(
+  page: Page,
+  opts?: { userId?: number; diets?: MockDiet[] },
+): Promise<DietMockState> {
+  const userId = opts?.userId ?? 1;
+  const initial = opts?.diets ?? [];
+  const state: DietMockState = {
+    list: [...initial],
+    detail: new Map(initial.map((d) => [d.id, d])),
+  };
+  let nextId = initial.reduce((m, d) => Math.max(m, d.id), 0) + 1;
+
+  await page.route('**/api/v1/diets**', async (route) => {
+    const req = route.request();
+    const method = req.method();
+    const url = new URL(req.url());
+    const path = url.pathname.replace(/^\/api\/v1/, '');
+
+    // GET /diets（带 mealType/from/to/page/size 过滤）
+    if (method === 'GET' && path === '/diets') {
+      const mealTypeQ = url.searchParams.get('mealType');
+      const fromQ = url.searchParams.get('from');
+      const toQ = url.searchParams.get('to');
+      let items = state.list;
+      if (mealTypeQ) items = items.filter((d) => d.mealType === mealTypeQ);
+      if (fromQ) items = items.filter((d) => d.occurredAt >= fromQ);
+      if (toQ) items = items.filter((d) => d.occurredAt <= toQ);
+      const page = Number(url.searchParams.get('page') ?? '1');
+      const size = Number(url.searchParams.get('size') ?? '20');
+      const body: DietListResponse = { items, total: items.length, page, size };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(body),
+      });
+      return;
+    }
+
+    // GET /diets/summary?date=YYYY-MM-DD
+    if (method === 'GET' && path === '/diets/summary') {
+      const dateQ = url.searchParams.get('date') ?? '';
+      const dayPrefix = dateQ.slice(0, 10);
+      const inDay = state.list.filter((d) => d.occurredAt.startsWith(dayPrefix));
+      const sum = inDay.reduce(
+        (acc, d) => ({
+          kcal: acc.kcal + d.kcal,
+          proteinG: acc.proteinG + d.proteinG,
+          carbG: acc.carbG + d.carbG,
+          fatG: acc.fatG + d.fatG,
+        }),
+        { kcal: 0, proteinG: 0, carbG: 0, fatG: 0 },
+      );
+      const summary: DietSummary = {
+        ...sum,
+        kcalDeltaYesterday: null,
+        kcalDeltaLastWeek: null,
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(summary),
+      });
+      return;
+    }
+
+    // GET /diets/frequent
+    if (method === 'GET' && path === '/diets/frequent') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk([]),
+      });
+      return;
+    }
+
+    // GET /diets/{id}
+    const detailMatch = path.match(/^\/diets\/(\d+)$/);
+    if (method === 'GET' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const d = state.detail.get(id);
+      if (!d) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: envelopeErr(1004, 'diet not found'),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(d),
+      });
+      return;
+    }
+
+    // PATCH /diets/{id}
+    if (method === 'PATCH' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const body = JSON.parse(req.postData() ?? '{}') as UpdateDietRequest;
+      const detail = state.detail.get(id);
+      if (detail) {
+        if (body.mealType !== undefined) detail.mealType = body.mealType;
+        if (body.name !== undefined) detail.name = body.name;
+        if (body.kcal !== undefined) detail.kcal = body.kcal;
+        if (body.proteinG !== undefined) detail.proteinG = body.proteinG;
+        if (body.carbG !== undefined) detail.carbG = body.carbG;
+        if (body.fatG !== undefined) detail.fatG = body.fatG;
+        if (body.note !== undefined) detail.note = body.note;
+        if (body.occurredAt !== undefined) detail.occurredAt = body.occurredAt;
+        detail.updatedAt = new Date().toISOString();
+      }
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // DELETE /diets/{id}
+    if (method === 'DELETE' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      state.detail.delete(id);
+      state.list = state.list.filter((d) => d.id !== id);
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // POST /diets
+    if (method === 'POST' && path === '/diets') {
+      const body = JSON.parse(req.postData() ?? '{}') as CreateDietRequest;
+      const now = new Date().toISOString();
+      const id = nextId++;
+      const created: MockDiet = {
+        id,
+        userId,
+        mealType: body.mealType,
+        name: body.name,
+        kcal: body.kcal,
+        proteinG: body.proteinG,
+        carbG: body.carbG,
+        fatG: body.fatG,
+        note: body.note ?? null,
+        occurredAt: body.occurredAt,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.detail.set(id, created);
+      state.list = [...state.list, created];
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: envelopeOk(created),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: envelopeErr(1004, 'not found'),
+    });
+  });
+
+  return state;
+}
+
+/**
+ * 跨用户越权：GET /diets/{id} 强制返回 1003。
+ *
+ * <p>注册时机：必须在 setupDietDefaults 之后调用，LIFO 让更具体的 URL 模式先生效。
+ */
+export async function mockDietCrossUser(page: Page, dietId: number): Promise<void> {
+  await page.route(`**/api/v1/diets/${dietId}`, async (route) => {
     await route.fulfill({
       status: 403,
       contentType: 'application/json',
