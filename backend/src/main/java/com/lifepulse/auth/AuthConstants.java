@@ -34,6 +34,18 @@ public final class AuthConstants {
     public static final int REGISTER_RL_MAX = 3;
     public static final Duration REGISTER_RL_WINDOW = Duration.ofMinutes(1);
 
+    /** Settings v1.1 — 改昵称限流（已认证用户，按 userId 维度）：1 分钟内 10 次。 */
+    public static final int NICKNAME_RL_MAX = 10;
+    public static final Duration NICKNAME_RL_WINDOW = Duration.ofMinutes(1);
+
+    /** Settings v1.1 — 改密码限流：1 分钟内 5 次。旧密码错也算一次。 */
+    public static final int PASSWORD_RL_MAX = 5;
+    public static final Duration PASSWORD_RL_WINDOW = Duration.ofMinutes(1);
+
+    /** Settings v1.1 — 注销账号限流：1 分钟内 3 次。 */
+    public static final int DELETE_ACCOUNT_RL_MAX = 3;
+    public static final Duration DELETE_ACCOUNT_RL_WINDOW = Duration.ofMinutes(1);
+
     /** Raw refresh token 字节数（256 bit 安全强度，spec §3.4）。 */
     public static final int REFRESH_TOKEN_BYTES = 32;
 
@@ -45,6 +57,11 @@ public final class AuthConstants {
 
     /** 注册限流 Redis key 前缀。完整 key：{@code lp:rl:register:<ip>}。 */
     public static final String REGISTER_RL_KEY_PREFIX = "lp:rl:register:";
+
+    /** Settings v1.1 限流 Redis key 前缀（按 userId 维度，持有合法 token 即可发请求）。 */
+    public static final String NICKNAME_RL_KEY_PREFIX = "lp:rl:settings:nickname:";
+    public static final String PASSWORD_RL_KEY_PREFIX = "lp:rl:settings:password:";
+    public static final String DELETE_ACCOUNT_RL_KEY_PREFIX = "lp:rl:settings:delete:";
 
     /** RateLimiter INCR + EXPIRE NX 原子 Lua 脚本（plan §6）。 */
     public static final String RATE_LIMIT_LUA =

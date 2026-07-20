@@ -32,6 +32,23 @@ export interface UserResponse {
   nickname: string | null;
 }
 
+/** 更新昵称请求（PATCH /users/me body，Settings v1.1）。 */
+export interface UpdateProfileRequest {
+  /** 昵称；trim 后空字符串在服务端落为 null（允许清空）。 */
+  nickname: string | null;
+}
+
+/** 修改密码请求（POST /users/me/password body，Settings v1.1）。 */
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
+/** 注销账号请求（DELETE /users/me body，Settings v1.1）— 二次验证用。 */
+export interface DeleteAccountRequest {
+  password: string;
+}
+
 export interface ApiEnvelope<T> {
   code: number;
   message?: string;

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { ApiError } from '@/api/http';
 import { showAuthError } from '@/utils/error';
 import { PASSWORD_RULES } from '@/types';
+import PasswordRules from '@/components/PasswordRules.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -15,10 +16,7 @@ const submitting = ref(false);
 const form = reactive({ email: '', password: '', nickname: '' });
 
 // 实时校验：computed 遍历 PASSWORD_RULES，每条返回 ok 状态。
-const ruleResults = computed(() =>
-  PASSWORD_RULES.map((r) => ({ key: r.key, label: r.label, ok: r.test(form.password) })),
-);
-const passwordOk = computed(() => ruleResults.value.every((r) => r.ok));
+const passwordOk = computed(() => PASSWORD_RULES.every((r) => r.test(form.password)));
 
 // 规则不使用 trigger:'blur'，确保 ElForm.validate() 立即对所有字段生效
 // （trigger 在未触发时会让 validate() 误报 invalid）。
@@ -87,11 +85,7 @@ async function submit(): Promise<void> {
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" show-password placeholder="••••••••" autocomplete="new-password" />
         </el-form-item>
-        <ul class="password-rules">
-          <li v-for="r in ruleResults" :key="r.key" :class="{ ok: r.ok }">
-            <span class="mark">{{ r.ok ? '✓' : '✗' }}</span>{{ r.label }}
-          </li>
-        </ul>
+        <PasswordRules :value="form.password" />
         <el-form-item label="昵称（可选）" prop="nickname">
           <el-input v-model="form.nickname" maxlength="32" show-word-limit placeholder="选填，方便打招呼" />
         </el-form-item>
@@ -130,23 +124,6 @@ async function submit(): Promise<void> {
 .brand p {
   margin: 4px 0 0;
   color: var(--el-text-color-secondary);
-}
-.password-rules {
-  list-style: none;
-  padding: 0 0 16px;
-  margin: -8px 0 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-.password-rules li {
-  padding: 2px 0;
-}
-.password-rules li.ok {
-  color: var(--el-color-success);
-}
-.password-rules .mark {
-  display: inline-block;
-  width: 1.2em;
 }
 .submit-btn {
   width: 100%;
