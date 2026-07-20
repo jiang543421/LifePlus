@@ -285,6 +285,22 @@ export interface PlanFilter {
 }
 
 // ----------------------------------------------------------------------
+// Diet 模块类型（spec §07-diet-design section 5 + 后端 Diet*Response/DTO）
+// ----------------------------------------------------------------------
+
+export type {
+  MealType,
+  DietResponse,
+  DietListItem,
+  DietListResponse,
+  CreateDietRequest,
+  UpdateDietRequest,
+  DietSummary,
+  DietFrequentItem,
+  DietFilter,
+} from './diet';
+
+// ----------------------------------------------------------------------
 // Expense 模块类型（spec §06-expense section 5 + 后端 Expense*Response/DTO）
 // ----------------------------------------------------------------------
 
