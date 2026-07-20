@@ -23,6 +23,9 @@
         <jjwt.version>0.12.6</jjwt.version>
         <flyway.version>10.20.0</flyway.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <!-- 显式声明源码编码。Windows 平台默认 GBK 会让 javac 错误拆 UTF-8 多字节
+             形成"非法字符"假错误。MVP1 起统一 UTF-8。 -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencyManagement>
@@ -226,6 +229,19 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- 显式声明编译编码为 UTF-8。
+                 Spring Boot 父 pom 默认 latin-1，Windows 中文环境会让 javac
+                 把 UTF-8 多字节字节流按 GBK 解析并报"非法字符"假错误。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>

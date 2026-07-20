@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifepulse.expense.repository.ExpenseMapper">
+
+  <resultMap id="BaseMap" type="com.lifepulse.expense.entity.Expense">
+    <id property="id" column="id"/>
+    <result property="userId" column="user_id"/>
+    <result property="amount" column="amount"/>
+    <result property="category" column="category"
+            typeHandler="com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler"/>
+    <result property="note" column="note"/>
+    <result property="occurredAt" column="occurred_at"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+    <result property="deleted" column="deleted"/>
+  </resultMap>
+
+  <select id="findByUserAndId" resultMap="BaseMap">
+    SELECT * FROM t_expense
+    WHERE user_id = #{userId} AND id = #{id} AND deleted = 0
+    LIMIT 1
+  </select>
+
+  <select id="listByUser" resultMap="BaseMap">
+    SELECT * FROM t_expense
+    WHERE user_id = #{userId}
+      AND deleted = 0
+      <if test="category != null">AND category = #{category}</if>
+      <if test="from != null">AND occurred_at &gt;= #{from}</if>
+      <if test="to != null">AND occurred_at &lt;= #{to}</if>
+    ORDER BY occurred_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUser" resultType="long">
+    SELECT COUNT(*) FROM t_expense
+    WHERE user_id = #{userId}
+      AND deleted = 0
+      <if test="category != null">AND category = #{category}</if>
+      <if test="from != null">AND occurred_at &gt;= #{from}</if>
+      <if test="to != null">AND occurred_at &lt;= #{to}</if>
+  </select>
+
+  <select id="summaryByCategory" resultType="map">
+    SELECT category AS k, COALESCE(SUM(amount), 0) AS v
+    FROM t_expense
+    WHERE user_id = #{userId} AND deleted = 0
+      <if test="from != null">AND occurred_at &gt;= #{from}</if>
+      <if test="to != null">AND occurred_at &lt;= #{to}</if>
+    GROUP BY category
+  </select>
+
+  <select id="summaryTotal" resultType="bigdecimal">
+    SELECT COALESCE(SUM(amount), 0) FROM t_expense
+    WHERE user_id = #{userId} AND deleted = 0
+      <if test="from != null">AND occurred_at &gt;= #{from}</if>
+      <if test="to != null">AND occurred_at &lt;= #{to}</if>
+  </select>
+
+</mapper>
