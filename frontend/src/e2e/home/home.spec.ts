@@ -123,13 +123,15 @@ test('点击「日报」占位卡 → 显示「即将上线」ElMessage', async 
   await expect(page).toHaveURL('http://localhost:5173/');
 });
 
-test('点击「消费」占位卡 → 显示「即将上线」ElMessage', async ({ page }) => {
+test('点击「消费」模块卡 → 跳转 /expenses', async ({ page }) => {
+  // v1.2.1 起消费卡从 placeholder 升级为 module（指向 /expenses）。
   await setupAuthDefaults(page, { user: ALICE });
   await loginAs(page, ALICE);
   await page.goto('/');
 
-  await page.locator('[data-testid="home-card-expense"] button.module-card').click();
-  await expect(page.locator('.el-message').filter({ hasText: '即将上线' })).toBeVisible();
+  await page.locator('[data-testid="home-card-expense"] a.module-card').click();
+  await page.waitForURL(/\/expenses$/);
+  await expect(page).toHaveURL('http://localhost:5173/expenses');
 });
 
 test('点击「饮食」占位卡 → 显示「即将上线」ElMessage', async ({ page }) => {
