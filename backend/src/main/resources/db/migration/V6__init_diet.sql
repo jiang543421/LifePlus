@@ -13,7 +13,7 @@
 CREATE TABLE t_diet (
     id          BIGINT       NOT NULL AUTO_INCREMENT,
     user_id     BIGINT       NOT NULL,
-    meal_type   VARCHAR(8)   NOT NULL,
+    meal_type   VARCHAR(16)  NOT NULL,
     name        VARCHAR(64)  NOT NULL,
     kcal        DECIMAL(7,2) NOT NULL DEFAULT 0,
     protein_g   DECIMAL(6,2) NOT NULL DEFAULT 0,
