@@ -678,3 +678,216 @@ export async function mockPlanCrossUser(page: Page, planId: number): Promise<voi
     });
   });
 }
+
+// ----------------------------------------------------------------------
+// Expense 模块 mock（v1.2.1）
+// ----------------------------------------------------------------------
+
+/** 单消费 mock 数据（POST/GET /expenses* 的完整结构）。 */
+export interface MockExpense {
+  id: number;
+  userId: number;
+  amount: number;
+  category: 'MEAL' | 'SHOPPING' | 'TRANSPORT' | 'SUBSCRIPTION' | 'OTHER';
+  note: string | null;
+  occurredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** setupExpenseDefaults 返回的可变状态，用于测试断言 mock 是否真的更新了。 */
+export interface ExpenseMockState {
+  list: MockExpense[];
+  detail: Map<number, MockExpense>;
+}
+
+function emptyAmountByCategory(): Record<MockExpense['category'], number> {
+  return { MEAL: 0, SHOPPING: 0, TRANSPORT: 0, SUBSCRIPTION: 0, OTHER: 0 };
+}
+
+/**
+ * 一站式 Expense mock：拦截 `/api/v1/expenses**` 全部分支。
+ *
+ * <p>GET /expenses 支持 category/from/to/page/size 过滤；
+ * GET /expenses/summary 累计 amountByCategory 与 totalAmount；
+ * POST 自增 id；PATCH / DELETE 立即更新 state。
+ *
+ * <p>真实后端契约由 {@code backend/.../ExpenseServiceIT.java}（Testcontainers）覆盖。
+ */
+export async function setupExpenseDefaults(
+  page: Page,
+  opts?: { userId?: number; expenses?: MockExpense[] },
+): Promise<ExpenseMockState> {
+  const userId = opts?.userId ?? 1;
+  const initial = opts?.expenses ?? [];
+  const state: ExpenseMockState = {
+    list: [...initial],
+    detail: new Map(initial.map((e) => [e.id, e])),
+  };
+  let nextId = initial.reduce((m, e) => Math.max(m, e.id), 0) + 1;
+
+  await page.route('**/api/v1/expenses**', async (route) => {
+    const req = route.request();
+    const method = req.method();
+    const url = new URL(req.url());
+    const path = url.pathname.replace(/^\/api\/v1/, '');
+
+    // GET /expenses（带 category/from/to/page/size 过滤）
+    if (method === 'GET' && path === '/expenses') {
+      const categoryQ = url.searchParams.get('category');
+      const fromQ = url.searchParams.get('from');
+      const toQ = url.searchParams.get('to');
+      let items = state.list;
+      if (categoryQ) items = items.filter((e) => e.category === categoryQ);
+      if (fromQ) items = items.filter((e) => e.occurredAt >= fromQ);
+      if (toQ) items = items.filter((e) => e.occurredAt <= toQ);
+      const page = Number(url.searchParams.get('page') ?? '1');
+      const size = Number(url.searchParams.get('size') ?? '20');
+      // List items are精简字段（与 ExpenseListItem 对齐）
+      const listItems = items.map((e) => ({
+        id: e.id,
+        amount: e.amount,
+        category: e.category,
+        note: e.note,
+        occurredAt: e.occurredAt,
+      }));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk({ items: listItems, total: items.length, page, size }),
+      });
+      return;
+    }
+
+    // GET /expenses/categories
+    if (method === 'GET' && path === '/expenses/categories') {
+      const cats = [
+        { code: 'MEAL', name: '餐饮' },
+        { code: 'SHOPPING', name: '购物' },
+        { code: 'TRANSPORT', name: '交通' },
+        { code: 'SUBSCRIPTION', name: '订阅' },
+        { code: 'OTHER', name: '其他' },
+      ];
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(cats),
+      });
+      return;
+    }
+
+    // GET /expenses/summary?year=&month=
+    if (method === 'GET' && path === '/expenses/summary') {
+      const year = Number(url.searchParams.get('year') ?? '0');
+      const month = Number(url.searchParams.get('month') ?? '0');
+      const monthStr = `${year}-${String(month).padStart(2, '0')}-01`;
+      const inMonth = state.list.filter((e) => e.occurredAt.startsWith(monthStr.slice(0, 7)));
+      const buckets = emptyAmountByCategory();
+      for (const e of inMonth) buckets[e.category] += e.amount;
+      const totalAmount = Object.values(buckets).reduce((s, v) => s + v, 0);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk({
+          startMonth: monthStr,
+          endMonth: monthStr,
+          amountByCategory: buckets,
+          totalAmount,
+        }),
+      });
+      return;
+    }
+
+    // GET /expenses/{id}
+    const detailMatch = path.match(/^\/expenses\/(\d+)$/);
+    if (method === 'GET' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const e = state.detail.get(id);
+      if (!e) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: envelopeErr(1004, 'expense not found'),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(e),
+      });
+      return;
+    }
+
+    // PATCH /expenses/{id}
+    if (method === 'PATCH' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      const body = JSON.parse(req.postData() ?? '{}') as Partial<MockExpense>;
+      const detail = state.detail.get(id);
+      if (detail) {
+        if (body.amount !== undefined) detail.amount = body.amount;
+        if (body.category !== undefined) detail.category = body.category;
+        if (body.note !== undefined) detail.note = body.note;
+        if (body.occurredAt !== undefined) detail.occurredAt = body.occurredAt;
+        detail.updatedAt = new Date().toISOString();
+      }
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // DELETE /expenses/{id}
+    if (method === 'DELETE' && detailMatch) {
+      const id = Number(detailMatch[1]);
+      state.detail.delete(id);
+      state.list = state.list.filter((e) => e.id !== id);
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+
+    // POST /expenses
+    if (method === 'POST' && path === '/expenses') {
+      const body = JSON.parse(req.postData() ?? '{}') as Partial<MockExpense>;
+      const now = new Date().toISOString();
+      const id = nextId++;
+      const created: MockExpense = {
+        id,
+        userId,
+        amount: body.amount ?? 0,
+        category: (body.category as MockExpense['category']) ?? 'MEAL',
+        note: body.note ?? null,
+        occurredAt: body.occurredAt ?? now,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.detail.set(id, created);
+      state.list = [...state.list, created];
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: envelopeOk(created),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: envelopeErr(1004, 'not found'),
+    });
+  });
+
+  return state;
+}
+
+/**
+ * 跨用户越权：GET /expenses/{id} 强制返回 1003。
+ */
+export async function mockExpenseCrossUser(page: Page, expenseId: number): Promise<void> {
+  await page.route(`**/api/v1/expenses/${expenseId}`, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: envelopeErr(1003, 'cross user denied'),
+    });
+  });
+}

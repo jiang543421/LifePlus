@@ -21,9 +21,9 @@
 | 1 | 今日待办 | 占位 + Phase 4 接真实数据 | GET `/api/tasks/today` | **激活** |
 | 2 | 今日事件 | 占位 + Phase 4 接真实数据 | GET `/api/plans/today` | **激活** |
 | 3 | 每日总结 | 灰禁用 + 「敬请期待」 | —（Phase 2） | 禁用 |
-| 4 | 消费概览 | 灰禁用 + 「敬请期待」 | —（Phase 2） | 禁用 |
-| 5 | 饮食记录 | 灰禁用 + 「敬请期待」 | —（Phase 2） | 禁用 |
-| 6 | AI 分析 | 灰禁用 + 「敬请期待」 | —（Phase 2） | 禁用 |
+| 4 | 消费概览 | 占位 + v1.2.1 接真实数据 | GET `/api/v1/expenses/summary?year&month` + `/api/v1/expenses?size=3&from=本月1日` | **激活** |
+| 5 | 饮食记录 | 占位 + v1.2.2 接真实数据 | GET `/api/v1/diets/summary?date=` + `/api/v1/diets?date=&size=0` | **激活** |
+| 6 | AI 分析 | 灰禁用 + 「敬请期待」 | —（Phase 2.4） | 禁用 |
 
 > 「占位」≠「禁用」。激活卡在 MVP1 仍渲框架（标题 + 数量占位 0 + 「无数据」空态），便于 Phase 4 真接入时只改数据层；扩展卡灰禁用，明确告知"未来会有"。
 

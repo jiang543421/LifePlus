@@ -19,16 +19,23 @@ describe('HOME_CARDS', () => {
 
   it('every module card has a non-empty to route', () => {
     const modules = HOME_CARDS.filter((c) => c.kind === 'module');
-    expect(modules).toHaveLength(2);
+    expect(modules).toHaveLength(3);
     for (const m of modules) {
       expect(m.to).toBeTruthy();
       expect(m.to?.startsWith('/')).toBe(true);
     }
   });
 
+  it('module card routes align with the expense v1.2.1 wiring', () => {
+    const byKey = Object.fromEntries(HOME_CARDS.map((c) => [c.key, c]));
+    expect(byKey.task?.to).toBe('/tasks');
+    expect(byKey.plan?.to).toBe('/plans');
+    expect(byKey.expense?.to).toBe('/expenses');
+  });
+
   it('no placeholder card carries a to route', () => {
     const placeholders = HOME_CARDS.filter((c) => c.kind === 'placeholder');
-    expect(placeholders).toHaveLength(4);
+    expect(placeholders).toHaveLength(3);
     for (const p of placeholders) {
       expect(p.to).toBeUndefined();
     }

@@ -14,6 +14,9 @@ const routes: RouteRecordRaw[] = [
   { path: '/plans/:id(\\d+)', name: 'plan-detail', component: () => import('@/views/PlanDetailView.vue'), meta: { title: '日程详情' } },
   // Phase 4 P4-5：/settings MVP1 空态，需登录；具体功能 v1.1 上线。
   { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { title: '设置' } },
+  // spec §06-expense：/expenses 与 /expenses/:id 都需登录；:id 限定数字避免 catch-all 误吞。
+  { path: '/expenses', name: 'expense-list', component: () => import('@/views/ExpenseView.vue'), meta: { title: '消费' } },
+  { path: '/expenses/:id(\\d+)', name: 'expense-detail', component: () => import('@/views/ExpenseDetailView.vue'), meta: { title: '消费详情' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

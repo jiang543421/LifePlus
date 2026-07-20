@@ -245,3 +245,94 @@ export interface PlanFilter {
   page: number;
   size: number;
 }
+
+// ----------------------------------------------------------------------
+// Expense 模块类型（spec §06-expense section 5 + 后端 Expense*Response/DTO）
+// ----------------------------------------------------------------------
+
+/** 分类字面值联合（与后端 ExpenseCategory 5 值对齐）。 */
+export type ExpenseCategory = 'MEAL' | 'SHOPPING' | 'TRANSPORT' | 'SUBSCRIPTION' | 'OTHER';
+
+/** 消费详情（POST /expenses、GET /expenses/{id} 响应）。
+ * 字段顺序与后端 ExpenseResponse record 完全一致。 */
+export interface ExpenseResponse {
+  id: number;
+  userId: number;
+  /** 后端 BigDecimal 默认 Jackson 序列化为 number（见 T8 IT 输出 "amount":10.00）。
+ *  精度保留到 2 位小数（DB DECIMAL(12,2)）；UI 展示走 utils/number.formatAmount()。 */
+  amount: number;
+  category: ExpenseCategory;
+  note: string | null;
+  /** ISO-8601 datetime with offset（后端 OffsetDateTime → "+08:00" 或 "Z"）。 */
+  occurredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 消费列表项（GET /expenses 响应中的精简字段；不含 userId/createdAt/updatedAt）。
+ * 字段顺序与后端 ExpenseListItem record 完全一致。 */
+export interface ExpenseListItem {
+  id: number;
+  amount: number;
+  category: ExpenseCategory;
+  note: string | null;
+  occurredAt: string;
+}
+
+/** 消费分页响应（与后端 PageResponse<T> 对齐）。 */
+export interface ExpenseListResponse {
+  items: ExpenseListItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+/** 创建请求（POST /expenses body）。 */
+export interface CreateExpenseRequest {
+  amount: number;
+  category: ExpenseCategory;
+  note?: string | null;
+  occurredAt: string;
+}
+
+/** 更新请求（PATCH /expenses/{id} body）— 所有字段可选，null-skip。 */
+export interface UpdateExpenseRequest {
+  amount?: number;
+  category?: ExpenseCategory;
+  note?: string | null;
+  occurredAt?: string;
+}
+
+/** 月度汇总（GET /expenses/summary 响应）。
+ * 字段顺序与后端 ExpenseSummaryResponse record 完全一致；
+ * 与 plan §T9 草稿的 categoryBreakdown / momDelta 不同——实际后端
+ * 字段是 startMonth / endMonth / amountByCategory / totalAmount（spec 06 无 momDelta）。 */
+export interface ExpenseSummary {
+  /** ISO-8601 date（YYYY-MM-01，回显入参月份）。 */
+  startMonth: string;
+  /** ISO-8601 date（YYYY-MM-01，与 startMonth 相同；service 层回显）。 */
+  endMonth: string;
+  /** 固定 5 键（ExpenseCategory 枚举字面值），缺分类时值为 0。 */
+  amountByCategory: Record<ExpenseCategory, number>;
+  /** 当月总支出。 */
+  totalAmount: number;
+}
+
+/** 分类静态元数据（GET /expenses/categories 响应元素）。
+ * 字段顺序与后端 CategoryItem record 完全一致。 */
+export interface CategoryItem {
+  code: ExpenseCategory;
+  /** 中文 label（与 CATEGORY_LABEL 一致）。 */
+  name: string;
+}
+
+/** 列表过滤条件（与后端 ExpenseFilter 对齐，page/size 必有）。 */
+export interface ExpenseFilter {
+  category?: ExpenseCategory;
+  /** ISO-8601 datetime with offset；null = 无下界。 */
+  from?: string;
+  /** ISO-8601 datetime with offset；null = 无上界。 */
+  to?: string;
+  page: number;
+  size: number;
+}
