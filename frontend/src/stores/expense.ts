@@ -166,6 +166,16 @@ export const useExpenseStore = defineStore('expense', {
     },
 
     /**
+     * 仅翻页：同步更新 filter.page + page.current；视图调 setPage 后再 fetchList。
+     * 与 task store.setPage 同款契约。
+     */
+    setPage(page: number, size?: number): void {
+      const newSize = size ?? this.filter.size;
+      this.filter = { ...this.filter, page, size: newSize };
+      this.page = { ...this.page, current: page, size: newSize };
+    },
+
+    /**
      * 清空所有过滤项 + 回到第 1 页 + 重新拉列表（plan §T10 行为）。
      * 与 {@code usePlanStore.resetFilter} 不同：plan store 的 resetFilter 仅清状态，
      * 视图负责 fetchList；本 store 把 refetch 合并进来简化视图代码。
