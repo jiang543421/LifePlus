@@ -109,13 +109,18 @@ describe('HomeView', () => {
 
       const planLink = w.find('[data-testid="home-card-plan"] a.module-card');
       expect(planLink.attributes('href')).toBe('/plans');
+
+      // 消费卡（expense v1.2.1 上线后从 placeholder 改为 module）
+      const expenseLink = w.find('[data-testid="home-card-expense"] a.module-card');
+      expect(expenseLink.exists()).toBe(true);
+      expect(expenseLink.attributes('href')).toBe('/expenses');
     });
 
     it('占位卡渲染为 button（不渲染 router-link）', () => {
       const w = mountHome();
-      // 占位卡来自 HOME_CARDS 后 4 张
+      // 占位卡来自 HOME_CARDS 后 3 张（消费卡 v1.2.1 已激活为 module）
       const placeholderKeys = HOME_CARDS.filter((c) => c.kind === 'placeholder').map((c) => c.key);
-      expect(placeholderKeys).toHaveLength(4);
+      expect(placeholderKeys).toHaveLength(3);
       placeholderKeys.forEach((key) => {
         const wrap = w.find(`[data-testid="home-card-${key}"]`);
         expect(wrap.exists()).toBe(true);
