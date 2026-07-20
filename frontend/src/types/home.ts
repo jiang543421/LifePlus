@@ -37,8 +37,8 @@ export interface HomeCard {
 
 /**
  * 6 张固定卡片（spec §04 §4）：
- * 任务 / 计划 / 消费 → 真实模块入口；
- * 日报 / 饮食 / AI 分析 → 占位（Phase 5+ 才实现）。
+ * 任务 / 计划 / 消费 / 饮食 → 真实模块入口；
+ * 日报 / AI 分析 → 占位（Phase 5+ 才实现）。
  *
  * `as const` + `Object.freeze` 双重锁定，避免任何模块 mutation（CLAUDE.md §4.1）。
  * 顺序锁定：模块卡在前、占位卡在后，便于响应式网格断点变化时视觉稳定。
@@ -47,7 +47,7 @@ export const HOME_CARDS: ReadonlyArray<HomeCard> = Object.freeze([
   { key: 'task', title: '任务', icon: 'List', kind: 'module', to: '/tasks' },
   { key: 'plan', title: '计划', icon: 'Calendar', kind: 'module', to: '/plans' },
   { key: 'expense', title: '消费', icon: 'Wallet', kind: 'module', to: '/expenses' },
+  { key: 'diet', title: '饮食', icon: 'KnifeFork', kind: 'module', to: '/diets' },
   { key: 'daily', title: '日报', icon: 'EditPen', kind: 'placeholder' },
-  { key: 'diet', title: '饮食', icon: 'KnifeFork', kind: 'placeholder' },
   { key: 'ai', title: 'AI 分析', icon: 'DataAnalysis', kind: 'placeholder' },
 ] as const);

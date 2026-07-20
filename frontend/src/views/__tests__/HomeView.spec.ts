@@ -110,17 +110,21 @@ describe('HomeView', () => {
       const planLink = w.find('[data-testid="home-card-plan"] a.module-card');
       expect(planLink.attributes('href')).toBe('/plans');
 
-      // 消费卡（expense v1.2.1 上线后从 placeholder 改为 module）
+      // 消费 / 饮食卡均已激活为 module（expense v1.2.1、diet v1.2.2）
       const expenseLink = w.find('[data-testid="home-card-expense"] a.module-card');
       expect(expenseLink.exists()).toBe(true);
       expect(expenseLink.attributes('href')).toBe('/expenses');
+
+      const dietLink = w.find('[data-testid="home-card-diet"] a.module-card');
+      expect(dietLink.exists()).toBe(true);
+      expect(dietLink.attributes('href')).toBe('/diets');
     });
 
     it('占位卡渲染为 button（不渲染 router-link）', () => {
       const w = mountHome();
-      // 占位卡来自 HOME_CARDS 后 3 张（消费卡 v1.2.1 已激活为 module）
+      // 占位卡仅来自未上线的模块（日报 / AI 分析）；消费 v1.2.1 与饮食 v1.2.2 已激活为 module
       const placeholderKeys = HOME_CARDS.filter((c) => c.kind === 'placeholder').map((c) => c.key);
-      expect(placeholderKeys).toHaveLength(3);
+      expect(placeholderKeys).toHaveLength(2);
       placeholderKeys.forEach((key) => {
         const wrap = w.find(`[data-testid="home-card-${key}"]`);
         expect(wrap.exists()).toBe(true);
