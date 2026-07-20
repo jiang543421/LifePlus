@@ -28,6 +28,11 @@ lp:
         secret: ${LP_JWT_SECRET:dev-only-secret-replace-me-32bytes-xxx}
         access-ttl: PT1H
         refresh-ttl: P7D
+    cors:
+        # CORS 跨域白名单（issue R-004）。
+        # 默认 http://localhost 适配 docker compose 前端 80 端口；dev 用 5173 需覆盖。
+        # prod 必须显式注入 LP_CORS_ORIGINS；禁 * / 空（启动 fail-fast）。
+        allowed-origins: ${LP_CORS_ORIGINS:http://localhost}
 management:
     endpoints:
         web:

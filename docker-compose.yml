@@ -32,9 +32,15 @@ services:
             LP_DB_PASS: lp_dev_only
             LP_REDIS_URL: redis://redis:6379
             LP_JWT_SECRET: dev-only-secret-replace-me-32bytes-xxx
+            # prod 必须从 .env 覆盖；这里给 dev 的占位（CLAUDE.md §7.5 / R-004）
+            LP_CORS_ORIGINS: ${LP_CORS_ORIGINS:-http://localhost}
         ports: ["8080:8080"]
     frontend:
-        build: ./frontend
+        build:
+            context: ./frontend
+            args:
+                # nginx.conf 的 CSP connect-src 注入具体 API origin
+                LP_API_ORIGIN: ${LP_API_ORIGIN:-http://localhost:8080}
         depends_on: [backend]
         ports: ["80:80"]
 volumes:
