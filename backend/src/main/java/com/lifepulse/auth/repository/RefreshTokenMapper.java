@@ -31,4 +31,24 @@ public interface RefreshTokenMapper extends BaseMapper<RefreshToken> {
             WHERE token_hash = #{hash} AND revoked_at IS NULL
             """)
     int revokeByHash(@Param("hash") String hash, @Param("now") OffsetDateTime now);
+
+    /**
+     * 撤销某用户所有未撤销的 refresh token（Settings v1.1，issue 2026-07-18-settings-v1-1）。
+     *
+     * <p>用于改密码 / 注销账号后的强制下线：调用成功后该用户所有现存 refresh token
+     * 均不可用于刷新 access token，但已签发的 access token 仍可存活至自然过期
+     * （≤1h，{@code lp.jwt.access-ttl: PT1H}）。MVP1 暂无 JWT deny-list。
+     *
+     * <p>幂等：重复调用或对无 token 用户调用均返回 0，不抛错。
+     *
+     * @param userId 用户 id
+     * @param now    撤销时间
+     * @return 受影响行数
+     */
+    @Update("""
+            UPDATE t_refresh_token
+            SET revoked_at = #{now}
+            WHERE user_id = #{userId} AND revoked_at IS NULL
+            """)
+    int revokeAllByUserId(@Param("userId") Long userId, @Param("now") OffsetDateTime now);
 }

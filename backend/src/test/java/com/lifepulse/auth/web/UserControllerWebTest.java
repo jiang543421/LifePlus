@@ -4,6 +4,7 @@ import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.auth.entity.User;
 import com.lifepulse.auth.repository.UserMapper;
 import com.lifepulse.auth.service.JwtService;
+import com.lifepulse.auth.service.UserService;
 import com.lifepulse.common.exception.GlobalExceptionHandler;
 import com.lifepulse.security.JwtAuthEntryPoint;
 import com.lifepulse.security.JwtAuthFilter;
@@ -60,6 +61,9 @@ class UserControllerWebTest {
 
     @MockBean
     private UserMapper userMapper;
+
+    @MockBean
+    private UserService userService;
 
     @MockBean
     private JwtAuthFilter jwtAuthFilter;
