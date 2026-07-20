@@ -26,7 +26,10 @@ mybatis-plus:
 lp:
     jwt:
         secret: ${LP_JWT_SECRET:dev-only-secret-replace-me-32bytes-xxx}
-        access-ttl: PT1H
+        # Access TTL 缩短到 15min（issue 2026-07-18 HIGH-2 决策，关闭 deny-list）。
+        # 改密 / 注销后旧 token 最长额外有效 15min；配合 refresh 旋转（7d）与前端
+        # 改密成功立即 clear()，盗用风险窗口与可用性 trade-off 接受。
+        access-ttl: PT15M
         refresh-ttl: P7D
     cors:
         # CORS 跨域白名单（issue R-004）。

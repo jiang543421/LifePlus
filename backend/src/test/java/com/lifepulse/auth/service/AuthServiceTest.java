@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.LogoutRequest;
@@ -54,6 +55,7 @@ class AuthServiceTest {
     @Mock private RefreshTokenMapper refreshTokenMapper;
     @Mock private RateLimiter rateLimiter;
     @Mock private JwtService jwtService;
+    @Mock private JwtProperties jwtProperties;
 
     private PasswordEncoder passwordEncoder;
     private AuthService authService;
@@ -64,8 +66,11 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder(AuthConstants.BCRYPT_STRENGTH);
+        // HIGH-2：issueAndPersist 从 JwtProperties.getAccessTtl() 取 expiresIn。
+        // Mockito 默认严格匹配 → register / logout 等不触发 login 的用例不允许
+        // 出现「stub 但未消费」。login / refresh 用例在内部 when().thenReturn() 显式 stub。
         authService = new AuthService(userMapper, refreshTokenMapper, passwordEncoder,
-                jwtService, rateLimiter);
+                jwtService, rateLimiter, jwtProperties);
 
         // H-3：attach Logback ListAppender 到 AuthService logger，便于断言 WARN 审计
         authLogger = (Logger) LoggerFactory.getLogger(AuthService.class);
@@ -235,6 +240,8 @@ class AuthServiceTest {
         when(userMapper.findByEmail("alice@example.com")).thenReturn(u);
         when(jwtService.issueAccess(7L)).thenReturn("access.jwt.value");
         when(jwtService.issueRefresh(7L)).thenReturn("refresh.jwt.value");
+        // HIGH-2：expiresIn 来源切换到 JwtProperties；测试默认回退 AuthConstants.ACCESS_TTL
+        when(jwtProperties.getAccessTtl()).thenReturn(AuthConstants.ACCESS_TTL);
 
         LoginRequest req = new LoginRequest("alice@example.com", "Valid1Pass");
 

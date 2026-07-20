@@ -1,6 +1,7 @@
 package com.lifepulse.auth.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.LogoutRequest;
@@ -24,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -52,17 +54,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RateLimiter rateLimiter;
+    private final JwtProperties jwtProperties;
 
     public AuthService(UserMapper userMapper,
                        RefreshTokenMapper refreshTokenMapper,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       RateLimiter rateLimiter) {
+                       RateLimiter rateLimiter,
+                       JwtProperties jwtProperties) {
         this.userMapper = userMapper;
         this.refreshTokenMapper = refreshTokenMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.rateLimiter = rateLimiter;
+        this.jwtProperties = jwtProperties;
     }
 
     // ---------- register ----------
@@ -204,7 +209,12 @@ public class AuthService {
         row.setExpiresAt(OffsetDateTime.now().plus(AuthConstants.REFRESH_TTL));
         refreshTokenMapper.insert(row);
 
-        return AuthResponse.of(accessToken, refreshToken, AuthConstants.ACCESS_TTL);
+        // expiresIn 必须与 token 真实 exp 一致：JWT 实际 TTL 来自 lp.jwt.access-ttl
+        // （issue 2026-07-18 HIGH-2：已缩短到 PT15M）。不再回退到 AuthConstants
+        // 编程内默认（PT1H），否则客户端 expiresIn 与 token 真实寿命不一致。
+        Duration accessTtl = jwtProperties.getAccessTtl();
+        return AuthResponse.of(accessToken, refreshToken,
+                accessTtl != null ? accessTtl : AuthConstants.ACCESS_TTL);
     }
 
     /** SHA-256 → lowercase hex。 */
