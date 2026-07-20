@@ -55,12 +55,50 @@ export interface ApiEnvelope<T> {
   data?: T;
 }
 
-/** 密码强度规则（与后端 RegisterRequest @Size(min=8,max=64) + @Pattern 对齐）。 */
+/**
+ * 密码强度规则（与后端 `auth/security/PasswordPolicy` 对齐，HIGH-3）。
+ *
+ * <p>前端规则仅用于 UX 实时提示，**不参与安全判定**（后端 Bean Validation
+ * 是唯一事实源）。字典镜像自后端 `PasswordPolicy.WEAK_PASSWORDS`，
+ * 大小写不敏感命中即亮 ✗。
+ */
 export const PASSWORD_RULES: ReadonlyArray<{ readonly key: string; readonly label: string; readonly test: (s: string) => boolean }> = [
   { key: 'length', label: '长度 8-64 位', test: (s) => s.length >= 8 && s.length <= 64 },
   { key: 'letter', label: '至少 1 个字母', test: (s) => /[A-Za-z]/.test(s) },
   { key: 'digit', label: '至少 1 个数字', test: (s) => /[0-9]/.test(s) },
+  {
+    key: 'weak',
+    label: '不能在常见弱密码字典中',
+    test: (s) => s.length >= 8 && !WEAK_PASSWORDS.has(s.toLowerCase()),
+  },
 ] as const;
+
+/**
+ * 常见弱密码字典（镜像自后端 `PasswordPolicy.WEAK_PASSWORDS`）。
+ * 前端 set 仅用于 UX 提示，避免提交后再被服务端拒；后端仍独立校验。
+ */
+const WEAK_PASSWORDS: ReadonlySet<string> = new Set([
+  // 数字序列
+  '12345678', '123456789', '1234567890', '11111111', '111111111',
+  '00000000', '000000000', '12121212', '98765432',
+  // 通用弱口令
+  'password', 'password1', 'password12', 'password123',
+  'qwerty', 'qwerty12', 'qwerty123', 'qwertyuiop', 'qwertyuio',
+  // 键盘序列
+  '1q2w3e4r', '1q2w3e4r5t', 'qazwsx', 'qazwsx123', 'zxcvbnm',
+  'asdfgh', 'asdfghjk', 'asdf1234', 'asd123', 'qwe123',
+  // 常见变体
+  'abcdefgh', 'abcdefg1', 'abc12345', 'abc123456',
+  'letmein', 'letmein1', 'iloveyou', 'iloveyou1',
+  'admin', 'admin123', 'admin1234', 'root', 'root1234',
+  'welcome', 'welcome1', 'monkey12', 'monkey123',
+  'dragon12', 'dragon123', 'sunshine1', 'sunshine123',
+  'p@ssw0rd', 'passw0rd', 'passw0rd1',
+  // 国内常用
+  'a123456', 'a1234567', 'a12345678', 'a123456789',
+  '5201314', '520520520', 'woaini', 'woaini520', 'woaini1314',
+  'qwer1234', 'qwerasdf', 'zxcvbnm1',
+]);
 
 /** UI 原型约定的错误码（与后端 AuthConstants + GlobalExceptionHandler 对齐）。
  * 注意：后端没有专门的弱密码码；弱密码由 Jakarta @Pattern 触发 → 1001 Validation。 */

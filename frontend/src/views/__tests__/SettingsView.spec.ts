@@ -222,10 +222,11 @@ describe('SettingsView / 安全（改密码）', () => {
   it('PasswordRules 实时提示：根据输入更新 ok 状态', async () => {
     const { wrapper } = await mountView();
     const rulesBefore = wrapper.findAll('.password-rules li');
-    expect(rulesBefore.length).toBe(3);
+    // HIGH-3：4 条规则（长度 / 字母 / 数字 / 不在常见弱密码字典）。
+    expect(rulesBefore.length).toBe(4);
     expect(rulesBefore.every((li) => !li.classes().includes('ok'))).toBe(true);
 
-    await wrapper.find('[data-testid="settings-new-password-input"] input').setValue('New12345');
+    await wrapper.find('[data-testid="settings-new-password-input"] input').setValue('NewValid1');
     await flushPromises();
     const rulesAfter = wrapper.findAll('.password-rules li');
     expect(rulesAfter.every((li) => li.classes().includes('ok'))).toBe(true);

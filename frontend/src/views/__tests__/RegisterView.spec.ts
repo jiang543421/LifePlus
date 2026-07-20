@@ -59,15 +59,15 @@ describe('RegisterView', () => {
     await router.isReady();
     const wrapper = mount(RegisterView, { global: { plugins: [router, ElementPlus] } });
     await wrapper.find('input[type="email"]').setValue('new@example.com');
-    await wrapper.find('input[type="password"]').setValue('abc12345');
+    await wrapper.find('input[type="password"]').setValue('Hello1234');
     // 第二个 text input 是 nickname
     const textInputs = wrapper.findAll('input[type="text"]');
     await textInputs[textInputs.length - 1].setValue('新人');
     await wrapper.find('button.submit-btn').trigger('click');
     await flushPromises();
 
-    expect(authApi.register).toHaveBeenCalledWith({ email: 'new@example.com', password: 'abc12345', nickname: '新人' });
-    expect(authApi.login).toHaveBeenCalledWith({ email: 'new@example.com', password: 'abc12345' });
+    expect(authApi.register).toHaveBeenCalledWith({ email: 'new@example.com', password: 'Hello1234', nickname: '新人' });
+    expect(authApi.login).toHaveBeenCalledWith({ email: 'new@example.com', password: 'Hello1234' });
     expect(router.currentRoute.value.path).toBe('/');
   });
 
@@ -80,11 +80,11 @@ describe('RegisterView', () => {
     await router.isReady();
     const wrapper = mount(RegisterView, { global: { plugins: [router, ElementPlus] } });
     await wrapper.find('input[type="email"]').setValue('a@b.com');
-    await wrapper.find('input[type="password"]').setValue('abc12345');
+    await wrapper.find('input[type="password"]').setValue('Hello1234');
     await wrapper.find('button.submit-btn').trigger('click');
     await flushPromises();
 
-    expect(authApi.register).toHaveBeenCalledWith({ email: 'a@b.com', password: 'abc12345', nickname: undefined });
+    expect(authApi.register).toHaveBeenCalledWith({ email: 'a@b.com', password: 'Hello1234', nickname: undefined });
   });
 
   it('密码不满足规则时不调 register', async () => {
@@ -106,7 +106,7 @@ describe('RegisterView', () => {
     const wrapper = mount(RegisterView, { global: { plugins: [router, ElementPlus] } });
     await wrapper.vm.$nextTick();
     stubElFormInvalid(wrapper);
-    await wrapper.find('input[type="password"]').setValue('abc12345');
+    await wrapper.find('input[type="password"]').setValue('Hello1234');
     await wrapper.find('button.submit-btn').trigger('click');
     await flushPromises();
     expect(authApi.register).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe('RegisterView', () => {
     await router.isReady();
     const wrapper = mount(RegisterView, { global: { plugins: [router, ElementPlus] } });
     await wrapper.find('input[type="email"]').setValue('taken@b.com');
-    await wrapper.find('input[type="password"]').setValue('abc12345');
+    await wrapper.find('input[type="password"]').setValue('Hello1234');
     await wrapper.find('button.submit-btn').trigger('click');
     await flushPromises();
     expect(showAuthError).toHaveBeenCalledWith(1005);
@@ -131,24 +131,24 @@ describe('RegisterView', () => {
     await router.isReady();
     const wrapper = mount(RegisterView, { global: { plugins: [router, ElementPlus] } });
     await wrapper.find('input[type="email"]').setValue('a@b.com');
-    await wrapper.find('input[type="password"]').setValue('abc12345');
+    await wrapper.find('input[type="password"]').setValue('Hello1234');
     await wrapper.find('button.submit-btn').trigger('click');
     await flushPromises();
     expect(showAuthError).toHaveBeenCalledWith(1001);
   });
 
-  it('密码输入过程中三条规则实时高亮 ok/✗', async () => {
+  it('密码输入过程中四条规则实时高亮 ok/✗', async () => {
     const router = buildRouter('/register');
     await router.isReady();
     const wrapper = mount(RegisterView, { global: { plugins: [router, ElementPlus] } });
 
     // 初始：所有规则 ✗
     const rulesBefore = wrapper.findAll('.password-rules li');
-    expect(rulesBefore.length).toBe(3);
+    expect(rulesBefore.length).toBe(4);
     expect(rulesBefore.every((li) => !li.classes().includes('ok'))).toBe(true);
 
-    // 输入 "abc12345"：三条规则都应满足
-    await wrapper.find('input[type="password"]').setValue('abc12345');
+    // 输入 "Hello1234"：四条规则都满足（长度 / 字母 / 数字 / 不在常见弱密码字典）
+    await wrapper.find('input[type="password"]').setValue('Hello1234');
     await flushPromises();
     const rulesAfter = wrapper.findAll('.password-rules li');
     expect(rulesAfter.every((li) => li.classes().includes('ok'))).toBe(true);
