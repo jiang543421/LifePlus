@@ -149,7 +149,7 @@ public class ExpenseService {
         OffsetDateTime to = ym.plusMonths(1).atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
         BigDecimal total = nz(mapper.summaryTotal(userId, from, to));
-        Map<String, BigDecimal> raw = mapper.summaryByCategory(userId, from, to);
+        Map<String, BigDecimal> raw = parseCategoryRows(mapper.summaryByCategory(userId, from, to));
         Map<String, BigDecimal> byCategory = zeroFilled(raw);
         return new ExpenseSummaryResponse(
                 LocalDate.of(year, month, 1),
@@ -194,6 +194,27 @@ public class ExpenseService {
     // null -> BigDecimal.ZERO (defensive; mapper SUM is non-null in MySQL).
     private static BigDecimal nz(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
+    }
+
+    // Convert List<Map<String,Object>> rows from the XML mapper into a clean
+    // Map<String, BigDecimal>. The SQL projects {k=category, v=SUM(amount)};
+    // each row's "v" arrives as BigDecimal but Java's erased Map type can't
+    // guarantee that at the mapper boundary.
+    private static Map<String, BigDecimal> parseCategoryRows(List<Map<String, Object>> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, BigDecimal> out = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Object key = row.get("k");
+            Object val = row.get("v");
+            if (key == null) continue;
+            BigDecimal amount = val instanceof BigDecimal bd
+                    ? bd
+                    : (val instanceof Number n ? BigDecimal.valueOf(n.doubleValue()) : BigDecimal.ZERO);
+            out.put(key.toString(), amount);
+        }
+        return out;
     }
 
     // Build a stable-key Map with all 5 categories present, zero-filled.

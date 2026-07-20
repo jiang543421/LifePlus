@@ -276,9 +276,9 @@ class ExpenseServiceTest {
     @Test
     void summary_happy_returnsTotalAndZeroFilledBreakdown() {
         when(mapper.summaryTotal(anyLong(), any(), any())).thenReturn(new BigDecimal("100.00"));
-        when(mapper.summaryByCategory(anyLong(), any(), any())).thenReturn(Map.of(
-                "MEAL", new BigDecimal("60.00"),
-                "TRANSPORT", new BigDecimal("40.00")));
+        when(mapper.summaryByCategory(anyLong(), any(), any())).thenReturn(java.util.List.of(
+                Map.of("k", "MEAL", "v", new BigDecimal("60.00")),
+                Map.of("k", "TRANSPORT", "v", new BigDecimal("40.00"))));
         ExpenseSummaryResponse s = service.summary(2026, 7);
         assertThat(s.totalAmount()).isEqualByComparingTo("100.00");
         assertThat(s.amountByCategory())
@@ -294,7 +294,7 @@ class ExpenseServiceTest {
     @Test
     void summary_empty_returnsZerosForAllCategories() {
         when(mapper.summaryTotal(anyLong(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(mapper.summaryByCategory(anyLong(), any(), any())).thenReturn(Map.of());
+        when(mapper.summaryByCategory(anyLong(), any(), any())).thenReturn(java.util.List.of());
         ExpenseSummaryResponse s = service.summary(2026, 7);
         assertThat(s.totalAmount()).isEqualByComparingTo("0");
         assertThat(s.amountByCategory()).hasSize(5);

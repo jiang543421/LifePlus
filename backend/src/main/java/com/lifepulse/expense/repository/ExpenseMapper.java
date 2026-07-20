@@ -60,11 +60,15 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
                      @Param("to") OffsetDateTime to);
 
     // Per-category aggregated amount (spec section 5 GET /expenses/summary).
-    // Returns Map<categoryEnglishName, summedAmount>; categories with zero rows
-    // are absent and must be backfilled with 0 by the service layer.
-    Map<String, BigDecimal> summaryByCategory(@Param("userId") Long userId,
-                                             @Param("from") OffsetDateTime from,
-                                             @Param("to") OffsetDateTime to);
+    // Returns a row list of {k=category, v=summedAmount}; categories with zero
+    // rows are absent and must be backfilled with 0 by the service layer.
+    // Why List<Map> instead of Map<String, BigDecimal>: the SELECT projects two
+    // columns (category + SUM), so each row IS a map; with @MapKey MyBatis
+    // would build Map<String, Map> (not Map<String, BigDecimal>). List<Map> lets
+    // the service convert BigDecimal-typed "v" once.
+    List<Map<String, Object>> summaryByCategory(@Param("userId") Long userId,
+                                                @Param("from") OffsetDateTime from,
+                                                @Param("to") OffsetDateTime to);
 
     // Range total amount; backs the totalAmount field of summary response.
     BigDecimal summaryTotal(@Param("userId") Long userId,
