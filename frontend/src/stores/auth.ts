@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia';
 import { authApi } from '@/api/auth';
-import type { UserResponse } from '@/types';
+import type {
+  ChangePasswordRequest,
+  DeleteAccountRequest,
+  UpdateProfileRequest,
+  UserResponse,
+} from '@/types';
 
 const LS_ACCESS = 'lp_access_token';
 const LS_REFRESH = 'lp_refresh_token';
@@ -76,6 +81,21 @@ export const useAuthStore = defineStore('auth', {
       removeKey(LS_ACCESS);
       removeKey(LS_REFRESH);
       removeKey(LS_USER);
+    },
+    /** Settings v1.1 — 改昵称；成功后写回 store + localStorage（tokens 不动）。 */
+    async updateProfile(req: UpdateProfileRequest): Promise<void> {
+      const updated = await authApi.updateProfile(req);
+      this.setUser(updated);
+    },
+    /** Settings v1.1 — 改密码；成功后清空所有 auth 态，跳转由 view 层负责。 */
+    async changePassword(req: ChangePasswordRequest): Promise<void> {
+      await authApi.changePassword(req);
+      this.clear();
+    },
+    /** Settings v1.1 — 注销账号（软删 + refresh 撤销）；成功后清空所有 auth 态，跳转由 view 层负责。 */
+    async deleteAccount(req: DeleteAccountRequest): Promise<void> {
+      await authApi.deleteAccount(req);
+      this.clear();
     },
   },
 });

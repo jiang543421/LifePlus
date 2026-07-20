@@ -10,6 +10,9 @@ vi.mock('@/api/auth', () => ({
     refresh: vi.fn(),
     logout: vi.fn(),
     me: vi.fn(),
+    updateProfile: vi.fn(),
+    changePassword: vi.fn(),
+    deleteAccount: vi.fn(),
   },
 }));
 
@@ -37,6 +40,9 @@ beforeEach(() => {
   vi.mocked(authApi.refresh).mockReset();
   vi.mocked(authApi.logout).mockReset();
   vi.mocked(authApi.me).mockReset();
+  vi.mocked(authApi.updateProfile).mockReset();
+  vi.mocked(authApi.changePassword).mockReset();
+  vi.mocked(authApi.deleteAccount).mockReset();
 });
 
 describe('useAuthStore / state hydration', () => {
@@ -184,5 +190,115 @@ describe('useAuthStore / logout', () => {
     await auth.logout();
     expect(authApi.logout).not.toHaveBeenCalled();
     expect(auth.accessToken).toBeNull();
+  });
+});
+
+describe('useAuthStore / updateProfile（Settings v1.1）', () => {
+  it('updateProfile 调 api.updateProfile 并把新 user 写入 state + localStorage', async () => {
+    const updated: UserResponse = { id: 1, email: 'alice@example.com', nickname: '新昵称' };
+    vi.mocked(authApi.updateProfile).mockResolvedValue(updated);
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser({ id: 1, email: 'alice@example.com', nickname: '旧昵称' });
+
+    await auth.updateProfile({ nickname: '新昵称' });
+
+    expect(authApi.updateProfile).toHaveBeenCalledWith({ nickname: '新昵称' });
+    expect(auth.user).toEqual(updated);
+    expect(JSON.parse(localStorage.getItem(LS_USER) ?? 'null')).toEqual(updated);
+    // tokens 不变
+    expect(auth.accessToken).toBe('A');
+    expect(auth.refreshToken).toBe('R');
+  });
+
+  it('updateProfile 允许把昵称清空（传 null）', async () => {
+    const updated: UserResponse = { id: 1, email: 'alice@example.com', nickname: null };
+    vi.mocked(authApi.updateProfile).mockResolvedValue(updated);
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser({ id: 1, email: 'alice@example.com', nickname: '旧昵称' });
+
+    await auth.updateProfile({ nickname: null });
+    expect(auth.user?.nickname).toBeNull();
+  });
+
+  it('updateProfile 失败时 state 不变（user 仍为旧值）', async () => {
+    vi.mocked(authApi.updateProfile).mockRejectedValue(new Error('boom'));
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser({ id: 1, email: 'alice@example.com', nickname: '旧昵称' });
+
+    await expect(auth.updateProfile({ nickname: '新昵称' })).rejects.toThrow('boom');
+    expect(auth.user?.nickname).toBe('旧昵称');
+    expect(localStorage.getItem(LS_USER)).not.toBeNull();
+  });
+});
+
+describe('useAuthStore / changePassword（Settings v1.1）', () => {
+  it('changePassword 调 api.changePassword 并清空所有 auth state', async () => {
+    vi.mocked(authApi.changePassword).mockResolvedValue(undefined);
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser(mockUser);
+
+    await auth.changePassword({ oldPassword: 'Old12345', newPassword: 'New12345' });
+
+    expect(authApi.changePassword).toHaveBeenCalledWith({ oldPassword: 'Old12345', newPassword: 'New12345' });
+    expect(auth.accessToken).toBeNull();
+    expect(auth.refreshToken).toBeNull();
+    expect(auth.user).toBeNull();
+    expect(localStorage.getItem(LS_ACCESS)).toBeNull();
+    expect(localStorage.getItem(LS_REFRESH)).toBeNull();
+    expect(localStorage.getItem(LS_USER)).toBeNull();
+  });
+
+  it('changePassword 失败时 state 不变（便于上层展示错误）', async () => {
+    vi.mocked(authApi.changePassword).mockRejectedValue(new Error('1002 wrong old'));
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser(mockUser);
+
+    await expect(
+      auth.changePassword({ oldPassword: 'Wrong1234', newPassword: 'New12345' }),
+    ).rejects.toThrow('1002 wrong old');
+
+    expect(auth.accessToken).toBe('A');
+    expect(auth.user).toEqual(mockUser);
+  });
+});
+
+describe('useAuthStore / deleteAccount（Settings v1.1）', () => {
+  it('deleteAccount 调 api.deleteAccount 并清空所有 auth state', async () => {
+    vi.mocked(authApi.deleteAccount).mockResolvedValue(undefined);
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser(mockUser);
+
+    await auth.deleteAccount({ password: 'pw12345' });
+
+    expect(authApi.deleteAccount).toHaveBeenCalledWith({ password: 'pw12345' });
+    expect(auth.accessToken).toBeNull();
+    expect(auth.refreshToken).toBeNull();
+    expect(auth.user).toBeNull();
+    expect(localStorage.getItem(LS_ACCESS)).toBeNull();
+    expect(localStorage.getItem(LS_USER)).toBeNull();
+  });
+
+  it('deleteAccount 失败时 state 不变（密码错 1002 仍停留登录态）', async () => {
+    vi.mocked(authApi.deleteAccount).mockRejectedValue(new Error('1002 bad password'));
+
+    const auth = useAuthStore();
+    auth.setTokens('A', 'R');
+    auth.setUser(mockUser);
+
+    await expect(auth.deleteAccount({ password: 'Wrong1234' })).rejects.toThrow('1002 bad password');
+    expect(auth.accessToken).toBe('A');
+    expect(auth.user).toEqual(mockUser);
   });
 });
