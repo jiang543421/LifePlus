@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifepulse.diet.repository.DietMapper">
+
+  <resultMap id="BaseMap" type="com.lifepulse.diet.entity.Diet">
+    <id property="id" column="id"/>
+    <result property="userId" column="user_id"/>
+    <result property="mealType" column="meal_type"
+            typeHandler="com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler"/>
+    <result property="name" column="name"/>
+    <result property="kcal" column="kcal"/>
+    <result property="proteinG" column="protein_g"/>
+    <result property="carbG" column="carb_g"/>
+    <result property="fatG" column="fat_g"/>
+    <result property="occurredAt" column="occurred_at"/>
+    <result property="note" column="note"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
+    <result property="deleted" column="deleted"/>
+  </resultMap>
+
+  <select id="findByUserAndId" resultMap="BaseMap">
+    SELECT * FROM t_diet
+    WHERE user_id = #{userId} AND id = #{id} AND deleted = 0
+    LIMIT 1
+  </select>
+
+  <select id="listByUser" resultMap="BaseMap">
+    SELECT * FROM t_diet
+    WHERE user_id = #{userId}
+      AND deleted = 0
+      <if test="mealType != null">AND meal_type = #{mealType}</if>
+      <if test="from != null">AND occurred_at &gt;= #{from}</if>
+      <if test="to != null">AND occurred_at &lt;= #{to}</if>
+    ORDER BY occurred_at DESC, id DESC
+    LIMIT #{offset}, #{size}
+  </select>
+
+  <select id="countByUser" resultType="long">
+    SELECT COUNT(*) FROM t_diet
+    WHERE user_id = #{userId}
+      AND deleted = 0
+      <if test="mealType != null">AND meal_type = #{mealType}</if>
+      <if test="from != null">AND occurred_at &gt;= #{from}</if>
+      <if test="to != null">AND occurred_at &lt;= #{to}</if>
+  </select>
+
+  <!--
+    当日 summary：单日窗口 [from, to]（service 用 LocalDate.asStartOfDay / asEndOfDay 计算）。
+    返回单行 Map<String, Object>，key 与 DietMapper#summaryOnDate JavaDoc 一致。
+    无数据时 COALESCE 保证 4 项营养都为 0 而非 NULL，便于 service 直接组装 DietSummary。
+  -->
+  <select id="summaryOnDate" resultType="map">
+    SELECT
+      COALESCE(SUM(kcal), 0)        AS kcal,
+      COALESCE(SUM(protein_g), 0)   AS proteinG,
+      COALESCE(SUM(carb_g), 0)      AS carbG,
+      COALESCE(SUM(fat_g), 0)       AS fatG
+    FROM t_diet
+    WHERE user_id = #{userId}
+      AND deleted = 0
+      AND occurred_at &gt;= #{from}
+      AND occurred_at &lt;= #{to}
+  </select>
+
+  <!--
+    高频名称聚合（frequent）：
+    - 按 name 分组 → 4 项营养 AVG + hitCount = COUNT(*)
+    - 排除空名称（name != '' 防御性，避免空字符串污染 top）
+    - 排序 hitCount DESC, name ASC（稳定序，便于 E2E 断言）
+    - LIMIT 由 service 控制（默认 10，上限 50）
+  -->
+  <select id="frequentByUser" resultType="map">
+    SELECT
+      name                          AS name,
+      AVG(kcal)                     AS avgKcal,
+      AVG(protein_g)                AS avgProteinG,
+      AVG(carb_g)                   AS avgCarbG,
+      AVG(fat_g)                    AS avgFatG,
+      COUNT(*)                      AS hitCount
+    FROM t_diet
+    WHERE user_id = #{userId}
+      AND deleted = 0
+      AND name IS NOT NULL
+      AND name != ''
+      AND occurred_at &gt;= #{from}
+      AND occurred_at &lt;= #{to}
+    GROUP BY name
+    ORDER BY hitCount DESC, name ASC
+    LIMIT #{limit}
+  </select>
+
+</mapper>
