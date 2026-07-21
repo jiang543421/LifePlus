@@ -51,4 +51,7 @@ public final class ErrorCode {
 
     /** 1500：服务器内部错误兜底。 */
     public static final int INTERNAL = 1500;
+
+    /** 1501：AI 洞察全部 provider 失败（spec §4.3）。 */
+    public static final int AI_DEGRADED = 1501;
 }
