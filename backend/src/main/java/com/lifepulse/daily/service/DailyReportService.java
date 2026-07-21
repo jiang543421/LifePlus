@@ -96,8 +96,8 @@ public class DailyReportService {
     /**
      * 聚合周报（含与上周对比）。
      *
-     * <p>{@code anyDayInWeek} 可为该周任意一天（含周一前的周日——ISO 周把周日归入下周）；
-     * Service 内部对齐到周一作为 {@code weekStart}，周日为 {@code weekEnd}。
+     * <p>{@code anyDayInWeek} 可为该周任意一天（ISO 8601 周一为首、周日为末，
+     * 故周日属于该 ISO 周的最后一天，对齐后 {@code weekStart} 为上周一）。
      *
      * <p>7 天逐日聚合 → 派生对比：
      * <ul>
@@ -220,8 +220,11 @@ public class DailyReportService {
      *   <li>{@code weekBasedYear()}：跨年周所属年（如 2026-W01 起始 2025-12-29 → 2026）</li>
      *   <li>{@code weekOfWeekBasedYear()}：ISO 周编号 01-53</li>
      * </ul>
+     *
+     * <p>可见性：package-private static，便于单测直接覆盖跨年逻辑而无需触发
+     * {@code validateInWindow} 的 30 天窗口校验。
      */
-    private static String formatIsoWeek(LocalDate weekStart) {
+    static String formatIsoWeek(LocalDate weekStart) {
         int year = weekStart.get(ISO_WEEK.weekBasedYear());
         int week = weekStart.get(ISO_WEEK.weekOfWeekBasedYear());
         return String.format(Locale.ROOT, "%04d-W%02d", year, week);
