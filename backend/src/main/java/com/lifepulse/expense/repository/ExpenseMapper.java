@@ -74,4 +74,12 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
     BigDecimal summaryTotal(@Param("userId") Long userId,
                             @Param("from") OffsetDateTime from,
                             @Param("to") OffsetDateTime to);
+
+    /**
+     * 指定用户在 [from, to] 区间的支出合计。用于 AI 模块本周消费聚合。
+     * 返回 {@code null} 表示无数据，调用方需自行处理（Provider 返回 ZERO）。
+     */
+    BigDecimal sumByUserOccurredBetween(@Param("userId") Long userId,
+                                        @Param("from") OffsetDateTime from,
+                                        @Param("to") OffsetDateTime to);
 }
