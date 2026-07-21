@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -86,4 +87,68 @@ public interface PlanMapper extends BaseMapper<Plan> {
     long countByUser(@Param("userId") Long userId,
                      @Param("from") LocalDateTime from,
                      @Param("to") LocalDateTime to);
+
+    // ===== 日报聚合查询（v1.2.3 / daily 模块） =====
+    // 设计说明：start_time 为 DATETIME，"某日"语义为半开区间
+    // [dayStart, nextDayStart)；V3 既有的 idx_user_start (user_id, start_time)
+    // 完美覆盖本组查询。
+
+    /**
+     * 日报聚合：指定用户在目标日的事件数（含全天与非全天）。
+     *
+     * <p>{@code dayStart} 与 {@code nextDayStart} 由 Provider 计算传入，
+     * 避免 mapper 引入时区转换逻辑。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_plan
+            WHERE user_id = #{userId}
+              AND start_time >= #{dayStart}
+              AND start_time <  #{nextDayStart}
+              AND deleted = 0
+            """)
+    long countByUserOnDay(@Param("userId") Long userId,
+                           @Param("dayStart") LocalDateTime dayStart,
+                           @Param("nextDayStart") LocalDateTime nextDayStart);
+
+    /**
+     * 日报聚合：指定用户在目标日的<b>非全天</b>事件总分钟数。
+     *
+     * <p>全天事件（{@code all_day = 1}）不计入分钟数，但会计入
+     * {@link #countByUserOnDay}。空集返回 0（{@code COALESCE(SUM, 0)}），
+     * 因此返回类型为 {@code long} 而非 {@link Long}。
+     */
+    @Select("""
+            SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, start_time, end_time)), 0)
+            FROM t_plan
+            WHERE user_id = #{userId}
+              AND start_time >= #{dayStart}
+              AND start_time <  #{nextDayStart}
+              AND deleted = 0
+              AND all_day = 0
+            """)
+    long sumActiveMinutesByUserOnDay(@Param("userId") Long userId,
+                                      @Param("dayStart") LocalDateTime dayStart,
+                                      @Param("nextDayStart") LocalDateTime nextDayStart);
+
+    /**
+     * 日报聚合：指定用户在目标日按 {@code HOUR(start_time)} 分组的计数。
+     *
+     * <p>返回 {@code List<Map<String, Object>>}，每行 key 为 {@code "bucket"}（int，0-23）
+     * 与 {@code "cnt"}（long）。{@code ORDER BY cnt DESC, bucket ASC} 让 Provider
+     * 取第一行即得 {@code busiestHour}。无事件则返回空列表。
+     */
+    @Select("""
+            SELECT HOUR(start_time) AS bucket, COUNT(*) AS cnt
+            FROM t_plan
+            WHERE user_id = #{userId}
+              AND start_time >= #{dayStart}
+              AND start_time <  #{nextDayStart}
+              AND deleted = 0
+            GROUP BY HOUR(start_time)
+            ORDER BY cnt DESC, bucket ASC
+            """)
+    List<Map<String, Object>> selectHourBucketsByUserOnDay(
+            @Param("userId") Long userId,
+            @Param("dayStart") LocalDateTime dayStart,
+            @Param("nextDayStart") LocalDateTime nextDayStart);
 }

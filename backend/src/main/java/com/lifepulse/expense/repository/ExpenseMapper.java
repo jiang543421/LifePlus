@@ -74,4 +74,19 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
     BigDecimal summaryTotal(@Param("userId") Long userId,
                             @Param("from") OffsetDateTime from,
                             @Param("to") OffsetDateTime to);
+
+    // ===== 日报聚合查询（v1.2.3 / daily 模块） =====
+    // 设计说明：occurred_at 为 DATETIME(3) 按 UTC 存储（spec 06-expense §4）。
+    // "某日"语义由调用方把 Asia/Shanghai 日期转为 UTC 半开区间传入；
+    // V4 既有的 idx_user_occurred (user_id, occurred_at) 完美覆盖本查询。
+
+    /**
+     * 日报聚合：指定用户在目标日的事件笔数（UTC 半开区间 [dayStart, nextDayStart)）。
+     *
+     * <p>{@code dayStart} / {@code nextDayStart} 由 Provider 计算传入，
+     * 避免 mapper 引入时区转换逻辑。
+     */
+    long countByUserOnDay(@Param("userId") Long userId,
+                          @Param("dayStart") OffsetDateTime dayStart,
+                          @Param("nextDayStart") OffsetDateTime nextDayStart);
 }

@@ -58,4 +58,13 @@
       <if test="to != null">AND occurred_at &lt;= #{to}</if>
   </select>
 
+  <!-- 日报聚合：目标日笔数（半开区间 [dayStart, nextDayStart)）；v1.2.3 新增。 -->
+  <select id="countByUserOnDay" resultType="long">
+    SELECT COUNT(*) FROM t_expense
+    WHERE user_id = #{userId}
+      AND occurred_at &gt;= #{dayStart}
+      AND occurred_at &lt;  #{nextDayStart}
+      AND deleted = 0
+  </select>
+
 </mapper>
