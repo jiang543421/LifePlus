@@ -121,4 +121,27 @@ public interface TaskMapper extends BaseMapper<Task> {
                      @Param("tag") String tag,
                      @Param("dueFrom") LocalDate dueFrom,
                      @Param("dueTo") LocalDate dueTo);
+
+    /**
+     * 统计指定用户在指定日期的当日任务总数（含已逻辑删除过滤）。
+     * 用于 AI 模块任务完成率聚合。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_task
+            WHERE user_id = #{userId} AND deleted = 0
+              AND due_date = #{date}
+            """)
+    int countTodayTasks(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+    /**
+     * 统计指定用户在指定日期的当日已完成任务数。
+     * 用于 AI 模块任务完成率聚合。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_task
+            WHERE user_id = #{userId} AND deleted = 0
+              AND status = 1
+              AND due_date = #{date}
+            """)
+    int countTodayCompletedTasks(@Param("userId") Long userId, @Param("date") LocalDate date);
 }
