@@ -1,21 +1,24 @@
 -- =============================================================
--- V5 — 日报模块复合索引
--- Spec: docs/specs/08-daily-report-design.md(落档中) / docs/prd/05-daily-report.md §3
--- 引擎:InnoDB;字符集:utf8mb4_0900_ai_ci
--- 目标查询:TaskMetricProvider.aggregateDaily(userId, date)
---   WHERE user_id = ? AND completed_at BETWEEN ? AND ? AND deleted = 0
+-- V5 — 日报模块索引审计（no-op）
+-- Spec: docs/prd/05-daily-report.md §3 / docs/specs/08-daily-report-design.md
+-- 引擎：InnoDB；字符集：utf8mb4_0900_ai_ci
 --
--- 关键说明:
--- 1. 本迁移仅 ADD INDEX,不建任何业务表(与 PRD §3.1 M0-1 / §5.1 一致)
--- 2. t_task 原 V2 迁移仅有 idx_user_status_due / idx_user_plan,
---    无 (user_id, completed_at) 复合索引,日报完成数聚合会全表扫描
--- 3. t_plan V3 已有 idx_user_start (user_id, start_time) 可直接复用
---    (日报日程按 start_time 聚合) —— 本迁移不复建
--- 4. t_expense V4 已有 idx_user_occurred (user_id, occurred_at) 可直接复用
---    (日报消费按 occurred_at 聚合) —— 本迁移不复建
--- 5. 若生产环境 Flyway 历史已含 V5 (例如早期 diet 迁移曾用 V5 后改 V6),
---    部署时本迁移会冲突 —— 需先用 Flyway repair 或手动回滚历史记录
+-- 设计变更记录（v1.2.3 实施期发现）：
+-- 1. 原计划为 t_task 加 idx_user_completed_at (user_id, completed_at)，
+--    但 t_task 当前 schema (V2) 没有 completed_at 列。v1.2.3 采用
+--    "status = DONE AND due_date BETWEEN ..." 完成判定语义，
+--    V2 既有的 idx_user_status_due (user_id, status, due_date) 完美覆盖，
+--    本迁移不再加索引。
+-- 2. t_plan V3 已有 idx_user_start (user_id, start_time)，按 start_time
+--    当日范围查询无需新增索引。
+-- 3. t_expense V4 已有 idx_user_occurred (user_id, occurred_at)，
+--    按 occurred_at 当日范围查询无需新增索引。
+-- 4. 若未来引入 completed_at 列（精确完成时间维度），届时新建
+--    V7+ 加 idx_user_completed_at 并在 TaskService.updateStatusByUser
+--    同步设置；本日历由 v1.3+ 评审后处理。
+--
+-- 部署说明：本迁移为 no-op，安全应用。如生产 Flyway 历史已有"V5 加索引"
+-- 期望的 deploy artifact，请直接替换本文件为期望版本号内容（递增版本号）。
 -- =============================================================
 
-ALTER TABLE t_task
-    ADD INDEX idx_user_completed_at (user_id, completed_at);
+SELECT 1; -- no-op marker（Flyway 要求 SQL 文件至少一条语句）
