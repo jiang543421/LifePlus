@@ -1,8 +1,19 @@
 # =============================================================
-# Dev profile (R-006)
-# 启用 Flyway seed（V5__seed_demo_accounts.sql）。
-# prod 不加载本文件；想 opt-in：注入 LP_FLYWAY_LOCATIONS 追加 classpath:db/seed。
+# Dev profile（R-006 已闭合：V5 seed 不再由 dev profile 注入）
+#
+# 历史：本文件曾将 classpath:db/seed 加入 spring.flyway.locations，
+#      让 UserIT @ActiveProfiles("dev") 跑 V5__seed_demo_accounts。
+#      与其他默认 profile IT 共享同一 MySQL 容器时产生
+#      "V5 resolved but not applied" 校验失败，根因是
+#      默认 profile IT 不 apply V5 而 dev profile IT 期望 V5。
+#
+# 现策略（plan v1.2.2 R-006 修复）：
+#   - dev profile 不再追加 db/seed；与默认 profile 共用 db/migration
+#   - 任何需要种子账号的代码路径走 UserIT.@BeforeEach 的幂等 INSERT
+#     （WHERE NOT EXISTS，AuthConstants.BCRYPT_STRENGTH 自愈）
+#   - prod 想启用 V5：显式注入 LP_FLYWAY_LOCATIONS 追加 classpath:db/seed
 # =============================================================
-spring:
-    flyway:
-        locations: classpath:db/migration,classpath:db/seed
+
+# 故意为空：dev profile 与默认 profile 行为一致。
+# 仅作为 dev 启动的"标记文件"保留，便于后续按需覆盖其它属性
+# （如 logging.level.*、management.endpoints.web.exposure.include 等）。

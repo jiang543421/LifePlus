@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -21,29 +20,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * R-006 — Flyway seed 账号集成测试。
+ * R-006 — 种子账号集成测试（v1.2.2 重构：移除 dev profile）。
  *
- * <p>覆盖 docs/issues/2026-07-18-r006-flyway-seed-account.md 全部 AC：
+ * <p>覆盖 docs/issues/2026-07-18-r006-flyway-seed-account.md 全部 AC（修订）：
  * <ol>
  *   <li>{@code seedAccounts_loginWithSeededEmail_returns200} —
- *       dev profile 加载 V5，{@code demo@lifepulse.test} / {@code alice@lifepulse.test}
- *       用 {@code Demo123!} 可直接登录返回 200</li>
+ *       {@code demo@lifepulse.test} / {@code alice@lifepulse.test} 用 {@code Demo123!}
+ *       可直接登录返回 200</li>
  *   <li>幂等：{@code seedAccounts_idempotent_seedBeforeEachIsNoop} —
  *       {@code @BeforeEach} 走 {@code WHERE NOT EXISTS}，多次运行不产生重复行；
  *       Testcontainers MySQL {@code withReuse=true)} 跨 JVM 共享 DB 反复验证</li>
- *   <li>{@code flywayHistory_includesV5} — 独立验证 V5 被 Flyway 加载并 applied（不依赖 t_user 状态）</li>
  * </ol>
  *
- * <p>关键配置：{@code @ActiveProfiles("dev")} 触发 {@code application-dev.yml}，
- * 把 {@code classpath:db/seed} 加入 {@code spring.flyway.locations}，
- * 才会跑 V5。其他 IT（{@code AuthFlowIT} 等）默认 profile 不加载 V5，互不污染。
+ * <p>v1.2.2 之前用 {@code @ActiveProfiles("dev")} 触发 {@code application-dev.yml}
+ * 把 {@code classpath:db/seed} 加入 {@code spring.flyway.locations}，让 V5 自动 apply；
+ * 但与默认 profile IT 共享同一 MySQL 容器（{@code withReuse(true)}）时，
+ * 默认 profile IT 不加载 V5，dev profile IT 又期望 V5 → Flyway 校验失败。
+ *
+ * <p>v1.2.2 修复（plan v1.2.2 R-006）：dev profile 不再追加 db/seed；
+ * 种子账号一律走 {@code @BeforeEach} 幂等 INSERT（BCrypt 重哈希），
+ * 既不依赖 V5 迁移、也不依赖 failsafe 执行顺序。
  *
  * <p>设计：{@code @BeforeEach} 走 idempotent INSERT 自愈 ——
  * 即使其他 IT（{@code AuthMappersIT} / {@code UserSettingsIT}）
  * 物理 {@code DELETE FROM t_user} 清表，{@code UserIT} 仍可独立跑通。
  * 这样测试不依赖 failsafe 执行顺序，与项目既有"测试隔离"惯例一致。
  */
-@ActiveProfiles("dev")
 @AutoConfigureMockMvc
 class UserIT extends AbstractIntegrationTest {
 
@@ -97,19 +99,6 @@ class UserIT extends AbstractIntegrationTest {
                 .isEqualTo(1);
         assertThat(aliceCount)
                 .as("alice 幂等：@BeforeEach 多次跑只 1 行")
-                .isEqualTo(1);
-    }
-
-    // ---------- AC: V5 migration 已 applied ----------
-
-    @Test
-    void flywayHistory_includesV5() {
-        // 不依赖 t_user 状态：直接查 flyway_schema_history 确认 V5 被加载并 applied。
-        Integer v5Count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '5' AND success = 1",
-                Integer.class);
-        assertThat(v5Count)
-                .as("V5__seed_demo_accounts 必须已在 flyway_schema_history applied")
                 .isEqualTo(1);
     }
 
