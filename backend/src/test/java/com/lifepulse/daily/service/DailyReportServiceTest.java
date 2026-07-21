@@ -390,7 +390,7 @@ class DailyReportServiceTest {
         }
 
         @Override
-        LocalDate today() {
+        public LocalDate today() {
             return fixedToday;
         }
     }

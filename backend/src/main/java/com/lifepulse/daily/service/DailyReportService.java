@@ -158,8 +158,8 @@ public class DailyReportService {
         }
     }
 
-    /** 暴露 today() 以便单测 override（package-private）。 */
-    LocalDate today() {
+    /** 暴露 today() 以便单测 override（package-private 单测 + Controller 显式调用）。 */
+    public LocalDate today() {
         return LocalDate.now(DailyConstants.ZONE);
     }
 
