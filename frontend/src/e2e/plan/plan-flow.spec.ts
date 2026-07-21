@@ -31,7 +31,7 @@ import {
   clickSubmit,
   strongPassword,
 } from '../helpers/test-fixtures';
-import { fillDateTimePicker } from '../helpers/el-date-picker';
+import { fillDateTimePicker } from '../helpers/el-control';
 
 const ALICE: MockUser = { id: 1, email: 'alice@lifepulse.test', nickname: 'alice' };
 const BOB: MockUser = { id: 2, email: 'bob@lifepulse.test', nickname: 'bob' };

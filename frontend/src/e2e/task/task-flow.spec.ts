@@ -26,7 +26,7 @@ import {
   clickSubmit,
   strongPassword,
 } from '../helpers/test-fixtures';
-import { selectElOption } from '../helpers/el-select';
+import { selectElOption } from '../helpers/el-control';
 import { TaskStatusValue } from '@/types';
 
 const ALICE: MockUser = { id: 1, email: 'alice@lifepulse.test', nickname: 'alice' };

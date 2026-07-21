@@ -27,7 +27,7 @@ import {
   strongPassword,
   expectAuthErrorToast,
 } from '../helpers/test-fixtures';
-import { selectElOption } from '../helpers/el-select';
+import { selectElOption, fillElInputNumber } from '../helpers/el-control';
 
 const ALICE: MockUser = { id: 1, email: 'alice@lifepulse.test', nickname: 'alice' };
 
@@ -147,8 +147,8 @@ test('点新增 → 填 name/mealType/kcal → POST → 列表出现新行 + suc
   // task-flow 同款 helper，直接 emit update:modelValue）。
   await selectElOption(page, '[data-testid="diet-dialog-meal-type"]', 'BREAKFAST');
 
-  // kcal（el-input-number 内部渲染 input）
-  await page.locator('[data-testid="diet-dialog-kcal"] input').fill('80');
+  // kcal（el-input-number 通过 fillElInputNumber 走 emit 链路，避开 +/- 按钮偶发跳变）
+  await fillElInputNumber(page, '[data-testid="diet-dialog-kcal"]', 80);
 
   // note
   await page.locator('[data-testid="diet-dialog-note"] textarea').fill('早餐');
