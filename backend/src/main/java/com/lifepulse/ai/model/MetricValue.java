@@ -14,6 +14,11 @@ import java.math.BigDecimal;
  */
 public record MetricValue(BigDecimal value, String unit, Trend trend) {
 
+    /** 无数据占位（value=null + trend=NONE）。 */
+    public static MetricValue none() {
+        return new MetricValue(null, null, Trend.NONE);
+    }
+
     /** 是否包含有效数据。value 非 null 且 > 0。 */
     public boolean isNonEmpty() {
         return value != null && value.compareTo(BigDecimal.ZERO) > 0;
