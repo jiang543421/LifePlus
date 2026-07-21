@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Update;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -121,4 +122,79 @@ public interface TaskMapper extends BaseMapper<Task> {
                      @Param("tag") String tag,
                      @Param("dueFrom") LocalDate dueFrom,
                      @Param("dueTo") LocalDate dueTo);
+
+    // ===== 日报聚合查询（v1.2.3 / daily 模块） =====
+    // 设计说明：v1.2.3 完成判定语义为 "status = DONE AND due_date BETWEEN ..."
+    // （t_task 当前 schema 无 completed_at 列）；V2 既有的
+    // idx_user_status_due (user_id, status, due_date) 完美覆盖本组查询。
+
+    /**
+     * 日报聚合：指定用户在 due 日期范围内所有 task 数（含各种状态）。
+     *
+     * <p>典型用法：{@code from = to = targetDate} 即"单日 due 数"。
+     * 被 {@code TaskMetricProvider.aggregateDaily} 调用。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_task
+            WHERE user_id = #{userId}
+              AND due_date BETWEEN #{from} AND #{to}
+              AND deleted = 0
+            """)
+    long countByUserDueBetween(@Param("userId") Long userId,
+                                @Param("from") LocalDate from,
+                                @Param("to") LocalDate to);
+
+    /**
+     * 日报聚合：due 日期范围内已完成 task 数（{@code status = doneStatus}）。
+     *
+     * <p>{@code doneStatus} 以参数传入，避免 mapper 耦合 TaskConstants，
+     * 也方便单测使用非默认值。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_task
+            WHERE user_id = #{userId}
+              AND due_date BETWEEN #{from} AND #{to}
+              AND deleted = 0
+              AND status = #{doneStatus}
+            """)
+    long countCompletedByUserDueBetween(@Param("userId") Long userId,
+                                         @Param("from") LocalDate from,
+                                         @Param("to") LocalDate to,
+                                         @Param("doneStatus") int doneStatus);
+
+    /**
+     * 日报聚合：due 日期范围内按 status 分组的计数。
+     *
+     * <p>返回 {@code List<Map<String, Object>>}，每行 key 为 {@code "bucket"}（int）
+     * 与 {@code "cnt"}（long）。返回值不保证涵盖所有状态码——某状态无任务则不出现。
+     * Provider 端负责填零默认。
+     */
+    @Select("""
+            SELECT status AS bucket, COUNT(*) AS cnt
+            FROM t_task
+            WHERE user_id = #{userId}
+              AND due_date BETWEEN #{from} AND #{to}
+              AND deleted = 0
+            GROUP BY status
+            """)
+    List<Map<String, Object>> selectStatusBucketsByUserDueBetween(
+            @Param("userId") Long userId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /**
+     * 日报聚合：due 日期范围内按 priority 分组的计数（语义同 status bucket）。
+     */
+    @Select("""
+            SELECT priority AS bucket, COUNT(*) AS cnt
+            FROM t_task
+            WHERE user_id = #{userId}
+              AND due_date BETWEEN #{from} AND #{to}
+              AND deleted = 0
+            GROUP BY priority
+            """)
+    List<Map<String, Object>> selectPriorityBucketsByUserDueBetween(
+            @Param("userId") Long userId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 }
