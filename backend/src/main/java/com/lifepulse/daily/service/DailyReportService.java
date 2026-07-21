@@ -167,7 +167,7 @@ public class DailyReportService {
      * 聚合 7 天每日指标，返回汇总值（用于周报对比）。
      *
      * <p>7 次单日 Provider 调用 = 7 × 4 = 28 次 mapper 调用；
-     * T8 IT 验证在 1w 行种子下整体 P95 < 300ms（{@link DailyConstants#WEEKLY_P95_BUDGET}）。
+     * T8 IT 验证在 1w 行种子下整体 P95 ≤ 500ms（{@link DailyConstants#WEEKLY_P95_BUDGET}）。
      */
     private WeeklyTotals aggregateWeek(long userId, LocalDate weekStart) {
         long completedSum = 0L;
@@ -231,7 +231,7 @@ public class DailyReportService {
     }
 
     /**
-     * 7 天汇总值 record（package-private 便于单测直接断言）。
+     * 7 天逐日聚合 → 派生对比：
      *
      * @param totalCompleted 7 天已完成任务数之和
      * @param totalCount     7 天总任务数之和
