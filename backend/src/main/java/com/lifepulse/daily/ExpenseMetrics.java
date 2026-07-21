@@ -9,7 +9,12 @@ import java.util.Map;
  *
  * <p>{@code totalAmount} 单位为元，{@code BigDecimal} 类型（前端序列化为字符串避免
  * IEEE 754 失精），与 expense 模块的 DECIMAL(12,2) 对齐。{@code topCategories}
- * 按金额降序取前 3 名，与 {@link #categoryBreakdown} 子集保持一致。
+ * 按金额降序取前 3 名（v1.2.3 固定为 3，{@link com.lifepulse.expense.ExpenseCategory}
+ * 共 5 类，故该列表元素数 ∈ [0, 3]，零金额类别不入榜）。
+ *
+ * <p>{@code categoryBreakdown} <b>固定包含全部 5 个分类</b>，零金额类别显式以
+ * {@code BigDecimal.ZERO} 填充，保证前端按固定 key 渲染不缺位。该填充由
+ * {@link com.lifepulse.daily.provider.ExpenseMetricProvider} 负责。
  */
 public record ExpenseMetrics(
         BigDecimal totalAmount,
