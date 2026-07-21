@@ -6,6 +6,7 @@
 > - [02-task-prd.md](./02-task-prd.md) — 任务模块
 > - [03-plan-prd.md](./03-plan-prd.md) — 日程模块
 > - [04-future-prd.md](./04-future-prd.md) — Phase 2 扩展模块
+- [05-daily-report.md](./05-daily-report.md) — 日报模块（v1.2.3 后端已发布，详见 [RELEASES/v1.2.3.md](../../RELEASES/v1.2.3.md)）
 
 ---
 
@@ -38,13 +39,16 @@
 |---|---|---|
 | Phase 0 | 项目骨架、部署栈、规范文档、前后端脚手架 | ✅ 已完成 |
 | Phase 1.1 | 用户与登录会话数据落地、实体与数据层 | ✅ 已完成 |
-| Phase 1.2–1.4 | 认证服务、安全拦截、前端登录注册与端到端联调 | ⏳ 待启动 |
-| Phase 2 | 任务模块 | ⏳ 待启动 |
-| Phase 3 | 计划模块 | ⏳ 待启动 |
-| Phase 4 | 首页仪表盘与跨模块联动 | ⏳ 待启动 |
-| Phase 5 | 性能、安全、可观测、打磨与发布 | ⏳ 待启动 |
+| Phase 1.2–1.4 | 认证服务、安全拦截、前端登录注册与端到端联调 | ✅ 已完成 |
+| Phase 2 | 任务模块 | ✅ 已完成（v1.0.0-mvp） |
+| Phase 3 | 计划模块 | ✅ 已完成（v1.0.0-mvp） |
+| Phase 4 | 首页仪表盘与跨模块联动 | ✅ 已完成（v1.0.0-mvp） |
+| Phase 5 | 性能、安全、可观测、打磨与发布 | ✅ 已完成（v1.0.0-mvp） |
+| MVP2 v1.2.1 | 消费 expense 模块 | ✅ 已发布（tag `v1.2.1`） |
+| MVP2 v1.2.2 | 饮食 diet 模块 + R-006 / Bug #1 收口 | ✅ 已发布（tag `v1.2.2`） |
+| MVP2 v1.2.3 | 日报 daily 后端能力（聚合端点 + 周报对照） | ✅ 后端已发布（tag `v1.2.3`，PR #15）；前端接入留待 v1.2.4 |
 
-> 单开发者节奏估算：**MVP1 完整可演示版本预计还需 4–6 周**。
+> v1.2.3 拆 PR scope：模块骨架（Constants / 4 Provider / DTO）已在 main 多次小 PR 中并入，squash 合并的 PR #15 主要带上 service 编排 + controller + IT 切片（含 11 用例 / 性能 P95）。Diet 永久禁用（`DietMetrics.enabled=false`），与 spec §3 / plan §T6 一致。
 
 ---
 
