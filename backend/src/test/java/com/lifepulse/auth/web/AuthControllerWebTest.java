@@ -110,6 +110,17 @@ class AuthControllerWebTest {
     }
 
     @Test
+    void register_weakPassword_returns400WithCode1001() throws Exception {
+        // HIGH-3：弱密码字典命中触发 1001。与 register_passwordWithoutDigit
+        // 区别：长度与字符复杂度均合法，仅字典命中 → 验证弱密码维度独立工作。
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"alice@example.com\",\"password\":\"password1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+    }
+
+    @Test
     void register_emailTaken_returns409WithCode1005() throws Exception {
         when(authService.register(any(), anyString()))
                 .thenThrow(new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email taken"));

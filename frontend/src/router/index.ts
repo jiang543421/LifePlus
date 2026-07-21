@@ -17,6 +17,9 @@ const routes: RouteRecordRaw[] = [
   // spec §06-expense：/expenses 与 /expenses/:id 都需登录；:id 限定数字避免 catch-all 误吞。
   { path: '/expenses', name: 'expense-list', component: () => import('@/views/ExpenseView.vue'), meta: { title: '消费' } },
   { path: '/expenses/:id(\\d+)', name: 'expense-detail', component: () => import('@/views/ExpenseDetailView.vue'), meta: { title: '消费详情' } },
+  // spec §07-diet：/diets 与 /diets/:id 都需登录；:id 限定数字避免 catch-all 误吞。
+  { path: '/diets', name: 'diet-list', component: () => import('@/views/DietView.vue'), meta: { title: '饮食' } },
+  { path: '/diets/:id(\\d+)', name: 'diet-detail', component: () => import('@/views/DietDetailView.vue'), meta: { title: '饮食详情' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

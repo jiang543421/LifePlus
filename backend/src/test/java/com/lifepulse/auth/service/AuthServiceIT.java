@@ -1,6 +1,7 @@
 package com.lifepulse.auth.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.LogoutRequest;
@@ -39,6 +40,7 @@ class AuthServiceIT extends AbstractIntegrationTest {
     @Autowired private UserMapper userMapper;
     @Autowired private RefreshTokenMapper refreshTokenMapper;
     @Autowired private StringRedisTemplate redis;
+    @Autowired private JwtProperties jwtProperties;
 
     private static String uniqueEmail() {
         return "user-" + UUID.randomUUID() + "@example.com";
@@ -76,7 +78,9 @@ class AuthServiceIT extends AbstractIntegrationTest {
         AuthResponse loginResp = authService.login(login, ip);
         assertThat(loginResp.accessToken()).isNotBlank();
         assertThat(loginResp.refreshToken()).isNotBlank();
-        assertThat(loginResp.expiresIn()).isEqualTo(AuthConstants.ACCESS_TTL);
+        // expiresIn 必须与 token 真实 TTL 一致：来自 lp.jwt.access-ttl（issue 2026-07-18 HIGH-2 已 PT15M）。
+        // 编程内默认 AuthConstants.ACCESS_TTL（PT1H）只作为 JwtProperties 未注入时的 fallback。
+        assertThat(loginResp.expiresIn()).isEqualTo(jwtProperties.getAccessTtl());
 
         // Act 3: refresh（旋转）
         RefreshRequest refresh = new RefreshRequest(loginResp.refreshToken());

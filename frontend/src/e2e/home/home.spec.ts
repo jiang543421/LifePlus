@@ -134,13 +134,15 @@ test('点击「消费」模块卡 → 跳转 /expenses', async ({ page }) => {
   await expect(page).toHaveURL('http://localhost:5173/expenses');
 });
 
-test('点击「饮食」占位卡 → 显示「即将上线」ElMessage', async ({ page }) => {
+test('点击「饮食」模块卡 → 跳转 /diets', async ({ page }) => {
+  // v1.2.2 起饮食卡从 placeholder 升级为 module（指向 /diets）。
   await setupAuthDefaults(page, { user: ALICE });
   await loginAs(page, ALICE);
   await page.goto('/');
 
-  await page.locator('[data-testid="home-card-diet"] button.module-card').click();
-  await expect(page.locator('.el-message').filter({ hasText: '即将上线' })).toBeVisible();
+  await page.locator('[data-testid="home-card-diet"] a.module-card').click();
+  await page.waitForURL(/\/diets$/);
+  await expect(page).toHaveURL('http://localhost:5173/diets');
 });
 
 test('点击「AI 分析」占位卡 → 显示「即将上线」ElMessage', async ({ page }) => {

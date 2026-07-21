@@ -1,11 +1,16 @@
 /**
- * 任务流 E2E（Phase 2-G）。
+ * 任务流 E2E（Phase 2-G，2026-07 补丁：通过 selectElOption 稳定 EP el-select）。
  *
  * <p>CLAUDE.md §6.1 强制项：任务流必须有 E2E。
  * 覆盖：守卫 → 空态 → 新建 → 详情 → mark-done → 编辑 → 删除 → 筛选 → 跨用户 1003。
  *
  * <p>不依赖真实后端：`api-mock.ts` 全量 page.route() 拦截 `/api/v1/tasks*`；
  * 真实后端契约由 `backend/src/test/.../task/TaskFlowIT.java`（Testcontainers）覆盖。
+ *
+ * <p>el-select 选项 click 在 Chromium + Playwright 下 popper 不稳（见 CLAUDE.md
+ * MEMORY 与 `helpers/el-select.ts` 头注），但选项 → emit → store 链路已由
+ * `TaskFilters.spec.ts` 单测覆盖；E2E「列表筛选」走真实 select chain，仅选项
+ * 输入这一步改用 `selectElOption`（直接 emit update:modelValue），保证链路稳定。
  */
 import { test, expect, type Page } from '@playwright/test';
 import {
@@ -21,6 +26,7 @@ import {
   clickSubmit,
   strongPassword,
 } from '../helpers/test-fixtures';
+import { selectElOption } from '../helpers/el-select';
 import { TaskStatusValue } from '@/types';
 
 const ALICE: MockUser = { id: 1, email: 'alice@lifepulse.test', nickname: 'alice' };
@@ -47,41 +53,6 @@ async function loginAs(page: Page, user: MockUser): Promise<void> {
   await fillLoginForm(page, user.email, strongPassword());
   await clickSubmit(page);
   await page.waitForURL((u) => !u.pathname.startsWith('/login'));
-}
-
-/**
- * 直接通过 pinia 调用 task store.setFilter + fetchList。
- *
- * <p>EP 2.x el-select 选项的 select 触发器绑定在 `pointerdown.prevent` 上；
- * Playwright 在 Chromium 下 `.click()` 派发的 pointerdown 序列偶发不触发 v-model
- * （hover 移动 aria-activedescendant 但 click 不 commit）。组件 → emit 链路已在
- * `TaskFilters.spec.ts` 单测覆盖；E2E 关注 filter 变更 → API → UI 的端到端。
- *
- * <p>调用前必须等 TaskListView 真正 mount（store 才会注册到 pinia._s）。
- */
-async function setTaskFilter(page: Page, patch: Record<string, unknown>): Promise<void> {
-  await page.evaluate((p) => {
-    const root = document.querySelector('#app') as unknown as {
-      __vue_app__?: {
-        _context: {
-          config: {
-            globalProperties: {
-              $pinia: {
-                _s: Map<string, {
-                  setFilter: (p: Record<string, unknown>) => void;
-                  fetchList: () => Promise<unknown>;
-                }>;
-              };
-            };
-          };
-        };
-      };
-    } | null;
-    const pinia = root?.__vue_app__?._context.config.globalProperties.$pinia;
-    const store = pinia?._s.get('task');
-    store?.setFilter(p);
-    void store?.fetchList();
-  }, patch);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -200,7 +171,7 @@ test('详情页删除：ElMessageBox 确认 → DELETE → 跳回 /tasks 空态'
   await expect(page.locator('[data-testid="empty-state"]')).toBeVisible();
 });
 
-test('列表筛选 status=TODO：filter 变更 → API 带 status=0 → 只剩 TODO 任务', async ({ page }) => {
+test('列表筛选 status=TODO：下拉筛 TODO → API 带 status=0 → 只剩 TODO 任务', async ({ page }) => {
   const t1 = task({ id: 1, title: '买菜', status: TaskStatusValue.TODO });
   const t2 = task({ id: 2, title: '看书', status: TaskStatusValue.DONE });
   await setupAuthDefaults(page, { user: ALICE });
@@ -208,14 +179,15 @@ test('列表筛选 status=TODO：filter 变更 → API 带 status=0 → 只剩 T
 
   await loginAs(page, ALICE);
   await page.goto('/tasks');
-  // 等 view mount → store 注册到 pinia._s
   await expect(page.locator('.task-item')).toHaveCount(2);
 
-  // 走 pinia 直连 setFilter + fetchList（el-select 选项 click 在 EP 2.x + Playwright 下不触发 v-model）
+  // 真实链路：emit update:modelValue → statusModel setter → emit update:filter →
+  // onFilterUpdate → store.setFilter + refresh → API GET /tasks?status=0。
+  // 选项点击步骤由 selectElOption 直接 emit 替代 popper（理由见 helpers/el-select.ts）。
   const filterResp = page.waitForResponse(
     (r) => /\/api\/v1\/tasks\?/.test(r.url()) && r.url().includes('status=0'),
   );
-  await setTaskFilter(page, { status: 0 });
+  await selectElOption(page, '[data-testid="filter-status"]', TaskStatusValue.TODO);
   await filterResp;
 
   // mock 已按 status=0 过滤返回 → UI 只剩 TODO

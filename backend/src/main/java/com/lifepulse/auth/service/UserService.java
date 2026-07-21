@@ -87,9 +87,9 @@ public class UserService {
     /**
      * 修改密码：BCrypt 校验旧密码 → 编码新密码 → 撤销所有 refresh token。
      *
-     * <p>access token 仍可存活至自然过期（≤1h，{@code lp.jwt.access-ttl: PT1H}），
-     * MVP1 暂无 JWT deny-list；前端改密码成功后立即 {@code auth.clear()} 退出，
-     * 与该限制配套（issue 决策记录）。
+     * <p>access token 仍可存活至自然过期（≤15min，{@code lp.jwt.access-ttl: PT15M}，
+     * issue 2026-07-18 HIGH-2 决策）。MVP1 暂无 JWT deny-list；前端改密码成功后
+     * 立即 {@code auth.clear()} 退出，与该限制配套（issue 决策记录）。
      *
      * @throws BusinessException 1002 未登录 / 旧密码错；1004 用户不存在
      */

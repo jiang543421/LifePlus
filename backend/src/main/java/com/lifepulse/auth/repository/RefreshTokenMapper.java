@@ -37,7 +37,8 @@ public interface RefreshTokenMapper extends BaseMapper<RefreshToken> {
      *
      * <p>用于改密码 / 注销账号后的强制下线：调用成功后该用户所有现存 refresh token
      * 均不可用于刷新 access token，但已签发的 access token 仍可存活至自然过期
-     * （≤1h，{@code lp.jwt.access-ttl: PT1H}）。MVP1 暂无 JWT deny-list。
+     * （≤15min，{@code lp.jwt.access-ttl: PT15M}，issue 2026-07-18 HIGH-2 决策）。
+     * MVP1 暂无 JWT deny-list。
      *
      * <p>幂等：重复调用或对无 token 用户调用均返回 0，不抛错。
      *
