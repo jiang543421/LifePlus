@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -86,4 +87,15 @@ public interface PlanMapper extends BaseMapper<Plan> {
     long countByUser(@Param("userId") Long userId,
                      @Param("from") LocalDateTime from,
                      @Param("to") LocalDateTime to);
+
+    /**
+     * 统计指定用户在指定日期的当日事件总数（按 start_time DATE 匹配）。
+     * 用于 AI 模块日程密度聚合。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_plan
+            WHERE user_id = #{userId} AND deleted = 0
+              AND DATE(start_time) = #{date}
+            """)
+    int countTodayEvents(@Param("userId") Long userId, @Param("date") LocalDate date);
 }
