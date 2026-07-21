@@ -87,28 +87,29 @@ LifePulse/
 | `pnpm build` | 构建生产产物（输出 `dist/`） |
 | `pnpm exec playwright test` | E2E（须 backend 已在 8080 监听） |
 
-## 4. 种子账号（R-006 v1.0.1）
+## 4. 种子账号（R-006 v1.2.2 重构）
 
-dev / test 环境 Flyway V5 自动注入 2 个 demo 账号（密码 `Demo123!`）：
+dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@BeforeEach` 幂等 INSERT（BCrypt strength=10 与 AuthConstants 对齐）：
 
 | email | nickname | 密码 |
 |---|---|---|
 | `demo@lifepulse.test` | `demo` | `Demo123!` |
 | `alice@lifepulse.test` | `alice` | `Demo123!` |
 
-**启用机制**：
+**当前机制（v1.2.2 起）**：
 
-- `application-dev.yml` 把 `classpath:db/seed` 加入 `spring.flyway.locations`，dev 启动自动跑 V5
-- 默认 `application.yml` 仅 `classpath:db/migration`（V1-V4），**prod 不会加载 seed**
-- prod 想 opt-in：注入 `LP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed`
+- dev / test：种子账号不落数据库，只在跑 `UserIT` 集成测试时由 `@BeforeEach` 注入；本地手动 `mvn spring-boot:run` 不会创建 demo 账号
+- 默认 `application.yml` 仅 `classpath:db/migration`（V1-V6），prod 不会加载 `db/seed`
+- `application-dev.yml` 为空文件（仅保留作为 dev profile 标记），不再追加 `db/seed` Flyway 路径
+- **prod opt-in**（仅当你想让生产 DB 自动注入 demo 账号时才需要；正常 prod 不推荐）：
+  ```bash
+  LP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed
+  ```
 
-**幂等性**：V5 用 `INSERT ... WHERE NOT EXISTS`，多次启动不会产生重复行；想换密码重哈希：
+**幂等性**：`db/seed/V5__seed_demo_accounts.sql` 走 `INSERT ... WHERE NOT EXISTS`，多次启动不重复。
 
-```bash
-cd backend && mvn -q test -Dtest=HashGen  # 控制台打印新 hash，粘到 V5 SQL
-```
-
-详见 `docs/issues/2026-07-18-r006-flyway-seed-account.md`。
+详见 `docs/issues/2026-07-18-r006-flyway-seed-account.md` 与
+[`backend/src/test/java/com/lifepulse/auth/web/UserIT.java`](backend/src/test/java/com/lifepulse/auth/web/UserIT.java)（v1.2.2 重构后唯一启用入口）。
 
 ## 5. 安全提示
 

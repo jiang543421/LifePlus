@@ -80,7 +80,7 @@ curl -I http://localhost/                # 期望 CSP / X-Content-Type-Options /
 ## 4. 开发模式
 
 ```bash
-# 后端（dev profile，启用 seed 账号 + 关闭生产 fail-fast）
+# 后端（dev profile：标记文件；行为与默认 profile 一致，仅用于本地覆盖属性）
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
@@ -90,7 +90,7 @@ pnpm install
 pnpm dev   # http://localhost:5173
 ```
 
-dev seed 账号见 [README.md §4](../README.md#4-seed-账号-dev-专属)。
+dev 不再自动注入 seed 账号；如需 demo 账号走 [README.md §4](../README.md#4-seed-账号-r006-v122-重构) 的 UserIT.@BeforeEach 路径或显式 `LP_FLYWAY_LOCATIONS`。
 
 ---
 
