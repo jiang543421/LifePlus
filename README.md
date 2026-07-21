@@ -126,10 +126,26 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 - 项目规范：`CLAUDE.md`
 - 提交规范：`CONTRIBUTING.md`
 
-## 7. 路线图
+## 7. Release Notes
 
-- MVP1（当前）：邮箱+密码认证、任务、计划、首页 6 卡
-- Phase 2：日报 / 消费 / 饮食 / AI 分析占位转为真实模块
+每个已发布 tag 对应的 release notes，按时间倒序：
+
+| Tag | Date | 模块 / 摘要 |
+|-----|------|------------|
+| [v1.2.3](RELEASES/v1.2.3.md) | 2026-07-21 | MVP2 第三阶段：日报（daily）后端聚合端点 + 周报对照（PR #15） |
+| [v1.2.2](RELEASES/v1.2.2.md) | 2026-07-21 | MVP2 第二阶段：饮食（diet）模块 + R-006 / Bug #1 收口 |
+| [v1.2.1](RELEASES/v1.2.1.md) | 2026-07-20 | MVP2 第一阶段：消费（expense）模块 |
+| [v1.0.0-mvp](RELEASES/v1.0.0-mvp.md) | 2026-07-15 | MVP1 首个 release：邮箱+密码认证、任务、计划、首页 6 卡 |
+
+> 最新发布：`v1.2.3`（PR #15 squash merge to `main` @ `ccb51dd`）— 含 `GET /api/v1/daily` + `GET /api/v1/daily/week` 两个聚合端点，diet 永久禁用，无 schema 变更。
+
+## 8. 路线图
+
+- MVP1（✅）：邮箱+密码认证、任务、计划、首页 6 卡
+- MVP2 第一阶段 v1.2.1（✅）：消费 expense
+- MVP2 第二阶段 v1.2.2（✅）：饮食 diet
+- MVP2 第三阶段 v1.2.3（✅ 部分）：日报 daily 后端能力（前端接入留待 v1.2.4）
+- 后续：AI 分析 v2.0、日报前端 v1.2.4、设置页 actions v1.1
 
 ---
 
