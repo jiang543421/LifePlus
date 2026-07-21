@@ -36,6 +36,11 @@ lp:
         # 默认 http://localhost 适配 docker compose 前端 80 端口；dev 用 5173 需覆盖。
         # prod 必须显式注入 LP_CORS_ORIGINS；禁 * / 空（启动 fail-fast）。
         allowed-origins: ${LP_CORS_ORIGINS:http://localhost}
+    # AI 分析模块（spec §7.1）
+    # 4 个 enabled=true 用 Java 默认值；daily-enabled=false 必须显式声明
+    # 避免 v1.2.3 合并前误用日报表导致 SQL 错误
+    ai:
+        daily-enabled: false
 management:
     endpoints:
         web:
