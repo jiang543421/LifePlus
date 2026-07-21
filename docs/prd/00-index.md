@@ -6,6 +6,7 @@
 > - [02-task-prd.md](./02-task-prd.md) — 任务模块
 > - [03-plan-prd.md](./03-plan-prd.md) — 日程模块
 > - [04-future-prd.md](./04-future-prd.md) — Phase 2 扩展模块
+> - [05-daily-report.md](./05-daily-report.md) — 日报模块(v1.2.3,Phase 2.1)
 
 ---
 
