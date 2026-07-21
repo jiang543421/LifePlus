@@ -1,13 +1,21 @@
 /**
- * 安全相关 E2E（1.4-E）。
+ * 安全相关 E2E（1.4-E + R-004）。
  *
  * <p>CLAUDE.md §6.1 强制项：
  * - 登录限流 1006
  * - refresh 重放 1401
  * - 跨用户越权 1003
+ * - CSP / CORS 安全头（R-004，见 `docs/issues/2026-07-18-csp-cors-prod-tightening.md`）
  *
  * <p>本组不依赖 backend；通过 page.route() 在浏览器层注入错误码，
- * 验证前端拦截器/守卫/清态链路正确。
+ * 验证前端拦截器/守卫/清态链路正确。CORS 测试用 page.route() 模拟
+ * 后端响应 CORS 头，浏览器 fetch 验证 allow-origin 解析链路。
+ *
+ * <p>nginx 端的 4 项 CSP / 安全头（Content-Security-Policy /
+ * X-Content-Type-Options / Referrer-Policy / Strict-Transport-Security）
+ * 不在 E2E 范围（dev 模式 `pnpm dev` 不走 nginx；prod 由 docker compose
+ * nginx 提供），由 `frontend/src/__tests__/nginx-config.spec.ts` 静态
+ * 解析 nginx.conf 兜底覆盖。
  */
 import { test, expect } from '@playwright/test';
 import {
@@ -119,4 +127,77 @@ test('未登录访问 / → 守卫推到 /login?redirect=/', async ({ page }) =>
   await expect(page).toHaveURL(/\/login\?redirect=\//);
   // 直接断言输入框存在（视图正常 mount）
   await expect(page.locator('input[type="email"]')).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// R-004：CORS 跨域契约（防御性覆盖）
+//
+// 边界说明：dev E2E 不跑 nginx、不接后端。CORS 在浏览器侧的"allow / block"
+// 判定由本章 2 个测试承担；后端响应正确性由 `backend/src/test/.../WebCorsIT`
+// MockMvc 验证；nginx 4 项安全头（Content-Security-Policy 等）由
+// `frontend/src/__tests__/nginx-config.spec.ts` 静态解析兜底。
+// ---------------------------------------------------------------------------
+
+test('R-004 CORS：白名单 origin → fetch 拿到 ACAO 并 resolve', async ({ page }) => {
+  // page.route() 在浏览器网络层之前拦截 → 即便 localhost:65535 没有监听器
+  // 也不会真连。page origin = http://localhost:5173。
+  // Access-Control-Expose-Headers: * 让浏览器侧 JS 能读到 ACAO（默认 ACAO
+  // 不在 safelist，跨域时 JS 读 r.headers.get('Access-Control-Allow-Origin')
+  // 返回 null；Spring `CorsConfiguration.exposedHeaders` 配 '*' 即可生效）。
+  await page.route('**/api/cors-probe', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': 'http://localhost:5173',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+        'Access-Control-Expose-Headers': '*',
+        'Access-Control-Max-Age': '3600',
+      },
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 0, data: { ok: true } }),
+    });
+  });
+
+  // 故意打 localhost:65535（同主机不同端口 = 跨源）模拟 cross-origin 请求。
+  const result = await page.evaluate(async () => {
+    try {
+      const r = await fetch('http://localhost:65535/api/cors-probe', { mode: 'cors' });
+      return {
+        status: r.status,
+        acao: r.headers.get('Access-Control-Allow-Origin'),
+      };
+    } catch (e) {
+      return { error: String(e) };
+    }
+  });
+
+  expect(result).not.toHaveProperty('error');
+  expect(result.status).toBe(200);
+  expect(result.acao).toBe('http://localhost:5173');
+});
+
+test('R-004 CORS：origin 不在白名单 → fetch 被浏览器拒绝', async ({ page }) => {
+  // 后端 mock 只回 ACAO=evil.com，与 page origin http://localhost:5173 不匹配
+  await page.route('**/api/cors-probe', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': 'http://evil.example.com',
+      },
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 0, data: { ok: true } }),
+    });
+  });
+
+  const result = await page.evaluate(async () => {
+    try {
+      await fetch('http://localhost:65535/api/cors-probe', { mode: 'cors' });
+      return { blocked: false };
+    } catch (e) {
+      return { blocked: true, reason: String(e) };
+    }
+  });
+
+  expect(result.blocked, '浏览器 CORS 校验应当拒绝不在白名单的 ACAO').toBe(true);
 });
