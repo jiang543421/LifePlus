@@ -83,7 +83,7 @@ TTL:   1800 s (30 min)
 ### 4.1 鉴权
 
 - 继承 MVP1 `JwtAuthFilter`：解析 `Authorization: Bearer <access>` → 写入 `UserContext.current()`
-- Controller 无需手动鉴权；由 `SecurityConfig` 配置 `/api/ai/**` → `authenticated()`
+- Controller 无需手动鉴权；由 `SecurityConfig` 配置 `/api/v1/ai/**` → `authenticated()`
 - Provider 内部所有 Mapper 调用必须传 `UserContext.current()` 取出的 `userId`，**禁止从请求参数取**
 
 ### 4.2 限流

@@ -11,7 +11,7 @@
 - **角色**：聚合 4 个领域模块（task / plan / expense / diet）的当日与本周指标，按规则拼出 1 句主文 + 3 个 chip delta
 - **不做**：LLM 调用、跨用户推荐、个性化训练、离线缓存、推送
 - **依赖方**：v1.2 模块（task v1.0 / plan v1.0 / expense v1.2.1 / diet v1.0）；daily v1.2.3 仅作为可选 provider 输入
-- **输出形态**：单一端点 `GET /api/ai/insight`，被 HomeView 智能卡 + 抽屉详情复用
+- **输出形态**：`GET /api/v1/ai/insight/today`（读，60/min/user，30min Redis 缓存）+ `POST /api/v1/ai/insight/refresh`（写，6/min/user），被 HomeView 智能卡 + 抽屉详情复用
 
 ---
 
@@ -26,7 +26,7 @@
 | `DietMetricProvider` | Provider | 读 `t_diet` 当日热量 + 蛋白达标率 | 不算 BMI、不推荐食谱 |
 | `DailyAiProvider` | Provider | 读 daily 报告均值（开关受 `lp.ai.daily-enabled` 控制） | daily 模块自身报告逻辑 |
 | `AiTemplateEngine` | Engine | 从 `ai-templates.properties` 加载 + `MessageFormat` 渲染 + 降级 | 不做国际化切换 |
-| `AiInsightController` | Web | 单端点 `GET /api/ai/insight`，鉴权 + 限流 | 不暴露内部 Provider 状态 |
+| `AiInsightController` | Web | `GET /api/v1/ai/insight/today` + `POST /api/v1/ai/insight/refresh`，鉴权 + 限流 | 不暴露内部 Provider 状态 |
 
 > Provider 是**接口**，Service 通过 `Map<String, MetricProvider>` 注入；开关 false 的 Provider 注入空实现，返回 NONE。
 
@@ -65,13 +65,13 @@
 
 ## 4. 核心业务流程
 
-### 4.1 端到端链路（GET /api/ai/insight）
+### 4.1 端到端链路（GET /api/v1/ai/insight/today）
 
 ```
 [1] 前端 HomeView mounted
         │
         ▼
-[2] GET /api/ai/insight  Authorization: Bearer <access>
+[2] GET /api/v1/ai/insight/today  Authorization: Bearer <access>
         │
         ▼
 [3] JwtAuthFilter 解析 → UserContext.current() = userId
