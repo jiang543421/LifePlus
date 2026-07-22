@@ -374,6 +374,120 @@ docs(readme): document seed account and env vars
 | `CLAUDE.md`（本文件） | 项目级规范 |
 | `README.md` | 项目介绍 + quickstart + seed 账号 |
 | `CONTRIBUTING.md` | 分支命名 / commit message / TDD 节奏 |
-| `docs/superpowers/specs/2026-07-15-lifepulse-mvp1-design.md` | 设计索引 |
-| `docs/specs/01-architecture..05-nfr-testing.md` | 设计拆分（编码按需读取） |
+| `docs/superpowers/specs/2026-07-15-lifepulse-mvp1-design.md` | MVP1 设计索引 |
+| `docs/superpowers/specs/2026-07-21-ai-v2-design.md` | AI v2.0 设计索引（已发布，tag `v2.0.0-ai`）|
+| `docs/superpowers/specs/2026-07-22-ai-v2-1-llm-design.md` | AI v2.1 LLM 增强设计（在分支 `feat/ai-llm-v2.1`）|
+| `docs/specs/01-architecture..05-nfr-testing.md` | MVP1 设计拆分（编码按需读取）|
+| `docs/specs/06-expense-design.md` ~ `08-daily-report-design.md` | MVP2 / v1.2 模块设计 |
+| `docs/specs/09-ai-llm-data-model.md` | AI v2.1 数据模型（Java 类 + Redis 键）|
+| `docs/ui-prototypes/00-index.md` + `01..08-*.md` | UI 原型（桌面 + 移动端 ASCII）|
+| `docs/prd/00-index.md` + `01..07-*.md` | 产品 PRD（KANO / RICE / 用户故事）|
 | `docs/superpowers/plans/2026-07-15-lifepulse-mvp1.md` | 实施计划 |
+
+---
+
+## 11. AI 模块规范（v2.1+ LLM 增强）
+
+> 本节为 v2.1+ AI 模块（引入 LLM）的项目级硬约束。
+> v2.0（智能卡 + 抽屉 + 模板引擎，5 Provider 聚合）已发布于 tag `v2.0.0-ai`；v2.1 在其上叠加 LLM 与独立分析页。
+> 详细设计：`docs/superpowers/specs/2026-07-22-ai-v2-1-llm-design.md` · 数据模型：`docs/specs/09-ai-llm-data-model.md` · UI 原型：`docs/ui-prototypes/08-ai-llm.md`
+
+### 11.1 硬约束（不可破）
+
+| # | 约束 | 含义 | 违反后果 |
+|---|---|---|---|
+| 1 | **无新表** | v2.1 不新增任何数据库表；零 Flyway 迁移 | CRITICAL |
+| 2 | **不修改既有字段** | 5 张业务表（`t_task` / `t_plan` / `t_expense` / `t_diet` / `t_daily_report`）字段语义不变 | CRITICAL |
+| 3 | **不引入新第三方依赖** | LLM 客户端用手写 Spring `RestClient` 调 OpenAI 兼容协议，不引入 Spring AI 库 | HIGH |
+| 4 | **跨用户隔离** | 缓存键 / 配额键 / 熔断键全部按 `userId` 隔离；端点不接受 userId 参数 | CRITICAL |
+| 5 | **依赖方向单向** | `Web → Service → LlmInsightGenerator → LlmClient`；反向禁止 | HIGH |
+| 6 | **端点不接受 userId** | 所有 `{id}` 由 JWT 解析得；越权一律 `BusinessException(1003)`（CLAUDE.md §7.2）| CRITICAL |
+
+### 11.2 密钥管理（`LP_LLM_API_KEY`）
+
+`LP_LLM_API_KEY` 同样适用 §7.1 禁硬编码规则，本节仅列 LLM 特有项：
+
+| 项 | 规则 |
+|---|---|
+| 配置注入 | `lp.ai.llm.api-key: ${LP_LLM_API_KEY:}` 占位符 |
+| 必填场景 | `provider=deepseek` 时必填；`provider=ollama` 可空 |
+| **启动期 fail fast** | 缺失 / 占位符（`sk-replace-` 前缀）/ 长度 < 20 → `IllegalStateException` → Spring 启动失败 |
+| **Ollama 模式特殊** | `circuit-breaker.enabled=false` 自动禁用（本地进程死掉与远程故障语义不同）|
+| **轮换流程** | DeepSeek 控制台撤销旧 key → 创建新 key → 改 `.env` → 重启（5 分钟闭环）|
+
+### 11.3 3 层降级链路（hard rule）
+
+```
+L1 LLM 成功  → source="llm"，渲染完整 payload
+L1 LLM 失败  → catch Llm*Exception → L2 模板 → source="template"
+L2 模板失败  → throw BusinessException(1501) → HTTP 503
+```
+
+- **L1 失败不重试**（5s 超时已包含网络抖动；429 重试只会更糟）
+- **L2 失败不返回部分数据**（1501 语义是完全不可用，部分数据会误导前端）
+- **用户感知最小化**：source 标签 + 缺少 advice/highlight 段，**无错误弹窗**
+- **两类触发场景**：
+  - A 类（LLM 失败降级）：5xx / 429 / 4xx / 超时 / 解析失败 / 敏感词
+  - B 类（绕开 L1）：4 chip 全 `none()` / `enabled=false` / 配额超限 / 熔断中
+
+### 11.4 Redis 命名空间（沿用 `lp:*` 前缀）
+
+| 键 | 类型 | TTL | 用途 | 来源 |
+|---|---|---|---|---|
+| `lp:ai:insight:<userId>` | String (JSON) | **6h**（v2.0 是 30min）| 洞察缓存（含 v2.1 新字段）| v2.0 沿用 + 字段扩展 |
+| `lp:rl:ai:insight:<userId>` | String | 60s | GET 限流 30/min/user | v2.0 沿用 |
+| `lp:rl:ai:refresh:<userId>` | String | 60s | POST refresh 限流 **3/min/user**（v2.0 是 6/min）| v2.0 沿用 + 阈值调整 |
+| `lp:ai:quota:<userId>:<yyyymmdd>` | String | **25h**（首次 INCR 时 EXPIRE）| 每日 LLM 调用配额 | **v2.1 新增** |
+| `lp:ai:circuit:state` + `:openedAt` | String | 永久 | 熔断状态 | **v2.1 新增** |
+| `lp:ai:circuit:failures` | Sorted Set | 5min 滑动 | 失败时间戳窗口 | **v2.1 新增** |
+
+> **注意**：缓存键与限流键命名以实际代码为准（v2.0 tech-arch 修正源 vs spec §18.2 不一致）；限流命名空间是 `lp:rl:*`（**不是** `lp:ai:rl:*`）。
+
+### 11.5 配额与熔断（v2.1 默认值）
+
+| 项 | 默认 | 范围 | 配置 |
+|---|---|---|---|
+| LLM 每日配额 | 50/用户/天 | 1-1000 | `lp.ai.llm.daily-quota` |
+| 熔断阈值 | 10 失败/5min | 1-100 / 1-60min | `lp.ai.llm.circuit-breaker.*` |
+| 熔断恢复 | 30min | 1-1440min | 同上 |
+| 缓存 TTL | 6h | 60s-24h | 可扩展配置项 |
+
+- **Redis 不可用降级**：quota **fail-open**（放行）/ circuit **fail-closed**（不熔断）/ 缓存 **MISS**（走计算）
+
+### 11.6 错误码扩展（v2.1 新增 4 个）
+
+| code | 含义 | HTTP | 是否直接返用户 |
+|---|---|---|---|
+| 1510 | LLM 配额超限 | 429 | ❌（Service catch → L2）|
+| 1511 | LLM 熔断中 | 503 | ❌（Service catch → L2）|
+| 1512 | LLM 响应解析失败 | 503 | ❌（Service catch → L2）|
+| 1513 | LLM 不可用 | 503 | ❌（Service catch → L2）|
+
+> **关键设计**：1510/1511/1512/1513 这 4 个错误码几乎不会直接出现在响应中——Service 内部全部 catch 走 L2 模板。它们主要在日志 / metrics 中体现，真实给用户看到的只有 0/1006/1501/500。
+
+### 11.7 测试阈值（v2.1 强制）
+
+| 层 | 工具 | 阈值 | 闸门 |
+|---|---|---|---|
+| `LlmInsightGenerator` | JUnit 5 + Mockito | **行覆盖 ≥ 90%** | `mvn verify` 中 JaCoCo 强制 |
+| `LlmClient` 各实现 | 同上 | ≥ 80% | 同上 |
+| `LlmCircuitBreaker` | 同上 | ≥ 85% | 同上 |
+| `LlmQuotaGuard` | 同上 | ≥ 85% | 同上 |
+| `AiInsightService` | 同上 | ≥ 85%（v2.0 基线 ≥ 80%）| 同上 |
+| Controller 鉴权/错误码 | `@WebMvcTest` | 100% | 同上 |
+| Testcontainers IT | `@SpringBootTest` | ≥ 6 用例（含 Ollama 模式端到端）| 同上 |
+| 前端 store | Vitest | 100% 关键 action | `pnpm test` |
+| `AiAnalysisView` | Vitest | 100% 关键组件 | 同上 |
+| E2E `ai-v2-1-flow.spec.ts` | Playwright | 5 用例（AI 卡 source + 抽屉跳转 + 独立分析页 4 段 + Ollama 切换 + refresh）| `pnpm exec playwright test` |
+
+### 11.8 禁止的反模式（v2.1 显式不做）
+
+| 反模式 | 原因 |
+|---|---|
+| LLM 失败时**重试 / 异步重试 / 切备用 provider** | 复杂度不值；DeepSeek 抖动 5s 内重试大概率失败 |
+| 降级时给前端**额外提示** | 用户无感最重要（source 标签 + 缺段已足够）|
+| 1501 时**返回部分数据** | 1501 语义是完全不可用，部分数据会误导前端 |
+| **用户级 LLM 开关**（`t_user.ai_llm_enabled`）| 1 人项目无价值；全局 `lp.ai.llm.enabled` 已够 |
+| **月度预算上限** | DeepSeek 成本 < 5 元/月，不需要 |
+| **Spring AI 库** | 手写 `RestClient` 200 行够用，0 新依赖 |
+| **历史 insight 落 DB** | "无新表"硬约束 + Redis 6h 缓存够用 |

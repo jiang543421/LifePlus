@@ -42,6 +42,25 @@ lp:
     # 避免 v1.2.3 合并前误用日报表导致 SQL 错误
     ai:
         daily-enabled: ${LP_AI_DAILY_ENABLED:false}
+        # LLM 接入层（spec §10.3 / CLAUDE.md §11.2 / v2.1 新增）。
+        # provider=deepseek 时 api-key 必填且不能是 sk-replace-* 占位符，
+        # 启动期由 LlmProperties compact constructor 校验失败即抛 IllegalStateException。
+        # Ollama 模式 api-key 留空，circuit-breaker 由调用方禁用（本地进程语义不同）。
+        llm:
+            enabled: ${LP_LLM_ENABLED:true}
+            provider: ${LP_LLM_PROVIDER:deepseek}
+            base-url: ${LP_LLM_BASE_URL:https://api.deepseek.com/v1}
+            api-key: ${LP_LLM_API_KEY:}
+            model: ${LP_LLM_MODEL:deepseek-chat}
+            timeout-ms: ${LP_LLM_TIMEOUT_MS:5000}
+            max-prompt-tokens: ${LP_LLM_MAX_PROMPT_TOKENS:1500}
+            max-response-tokens: ${LP_LLM_MAX_RESPONSE_TOKENS:300}
+            daily-quota: ${LP_LLM_DAILY_QUOTA:50}
+            circuit-breaker:
+                enabled: ${LP_LLM_CB_ENABLED:true}
+                failure-threshold: ${LP_LLM_CB_THRESHOLD:10}
+                window-minutes: ${LP_LLM_CB_WINDOW:5}
+                cooldown-minutes: ${LP_LLM_CB_COOLDOWN:30}
 management:
     endpoints:
         web:

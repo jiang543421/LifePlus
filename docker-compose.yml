@@ -43,5 +43,21 @@ services:
                 LP_API_ORIGIN: ${LP_API_ORIGIN:-http://localhost:8080}
         depends_on: [backend]
         ports: ["80:80"]
+    # Optional: local Ollama for offline / privacy mode (CLAUDE.md §11.2)
+    # Start with: docker compose --profile llm-ollama up -d
+    # Pull model: docker compose exec ollama ollama pull deepseek-r1:8b
+    ollama:
+        image: ollama/ollama:latest
+        container_name: lp-ollama
+        profiles: ["llm-ollama"]
+        ports: ["11434:11434"]
+        volumes: ["ollama-data:/root/.ollama"]
+        healthcheck:
+            test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+        restart: unless-stopped
 volumes:
     dbdata: {}
+    ollama-data:

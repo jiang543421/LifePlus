@@ -1,0 +1,33 @@
+title = "LifePulse secret scan"
+
+[extend]
+useDefault = true
+
+# DeepSeek / OpenAI 兼容 API key 模式
+[[rules]]
+id = "deepseek-or-openai-api-key"
+description = "DeepSeek/OpenAI-style API key pattern"
+regex = '''sk-[a-zA-Z0-9]{32,}'''
+tags = ["secret", "llm"]
+
+# LifePulse 自身 JWT secret 在源码中（应只在 .env / application.yml 占位符中出现）
+[[rules]]
+id = "lp-jwt-secret-in-source"
+description = "LP_JWT_SECRET assignment in source code"
+regex = '''LP_JWT_SECRET\s*=\s*["'][^"']{16,}["']'''
+tags = ["secret", "jwt"]
+
+# Generic high-entropy hex/base64 blocks（保险）
+[[rules]]
+id = "high-entropy-secret"
+description = "Potential 64+ char base64 secret in source"
+regex = '''(?i)(secret|password|token)\s*[=:]\s*["'][A-Za-z0-9+/=]{64,}["']'''
+tags = ["secret"]
+
+[allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''docs/.*\.md$''',
+  '''\.superpowers/.*\.md$''',
+  '''backend/src/test/.*\.java$''',
+]

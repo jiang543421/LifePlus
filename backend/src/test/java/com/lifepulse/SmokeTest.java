@@ -51,7 +51,14 @@ import org.springframework.test.context.TestPropertySource;
                         + "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"
         }
 )
-@TestPropertySource(properties = "lp.jwt.secret=test-only-secret-test-only-secret-test")
+@TestPropertySource(properties = {
+        "lp.jwt.secret=test-only-secret-test-only-secret-test",
+        // v2.1 PR1（Task 1 引入 LlmProperties）：SmokeTest 不验证 LLM 链路，
+        // 关掉 LLM 走 v2.0 模板路径，避免占位符 key 触发启动期 fail-fast。
+        // LLM 路径由 LlmClientContractTest / DeepSeekClientTest / OllamaClientTest 单独覆盖。
+        "lp.ai.llm.enabled=false",
+        "lp.ai.llm.api-key="
+})
 class SmokeTest {
 
     @MockBean private UserMapper userMapper;
