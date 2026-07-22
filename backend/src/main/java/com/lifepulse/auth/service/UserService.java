@@ -169,7 +169,7 @@ public class UserService {
     private void checkRateLimit(String rlKey, int max, java.time.Duration window) {
         if (rateLimiter.hit(rlKey, max, window)) {
             log.warn("rate limit exceeded: key={}", rlKey);
-            throw new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "操作过于频繁，请稍后再试");
+            throw new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "操作过于频繁，请稍后再试");
         }
     }
 }
