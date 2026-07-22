@@ -37,10 +37,11 @@ lp:
         # prod 必须显式注入 LP_CORS_ORIGINS；禁 * / 空（启动 fail-fast）。
         allowed-origins: ${LP_CORS_ORIGINS:http://localhost}
     # AI 分析模块（spec §7.1）
-    # 4 个 enabled=true 用 Java 默认值；daily-enabled=false 必须显式声明
+    # 4 个 enabled=true 用 Java 默认值；daily-enabled 默认 false（v2.0 stub）
+    # 可经 LP_AI_DAILY_ENABLED=true 在 prod 灰度开启（v2.1+ 启用 daily provider）
     # 避免 v1.2.3 合并前误用日报表导致 SQL 错误
     ai:
-        daily-enabled: false
+        daily-enabled: ${LP_AI_DAILY_ENABLED:false}
 management:
     endpoints:
         web:
