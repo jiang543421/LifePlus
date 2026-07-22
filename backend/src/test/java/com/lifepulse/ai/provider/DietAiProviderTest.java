@@ -3,6 +3,8 @@ package com.lifepulse.ai.provider;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lifepulse.ai.model.MetricValue;
@@ -92,5 +94,43 @@ class DietAiProviderTest {
     @Test
     void key_returnsDiet() {
         assertThat(provider.key()).isEqualTo("diet");
+    }
+
+    @Test
+    void collect_kcalValueIsStringNumber_parsesViaDoubleValue() {
+        // pin extractKcal 兼容 Long/Integer/Double 等 Number 子类
+        Map<String, Object> row = new HashMap<>();
+        row.put("kcal", Long.valueOf(800));
+        when(dietMapper.summaryOnDate(anyLong(), any(), any())).thenReturn(row);
+
+        MetricValue mv = provider.collect(1L, ctx);
+
+        assertThat(mv.value()).isEqualByComparingTo(new BigDecimal("800"));
+        assertThat(mv.isNonEmpty()).isTrue();
+    }
+
+    @Test
+    void collect_kcalValueIsUnknownType_returnsZero() {
+        // pin extractKcal 对未知类型 fallback 到 ZERO（不抛）
+        Map<String, Object> row = new HashMap<>();
+        row.put("kcal", "not-a-number");  // String 而非 Number
+        when(dietMapper.summaryOnDate(anyLong(), any(), any())).thenReturn(row);
+
+        MetricValue mv = provider.collect(1L, ctx);
+
+        assertThat(mv.value()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(mv.isNonEmpty()).isFalse();
+    }
+
+    @Test
+    void collect_passesUserIdToMapper() {
+        // pin CLAUDE.md §7.2：userId 必须透传
+        Map<String, Object> row = new HashMap<>();
+        row.put("kcal", BigDecimal.valueOf(500));
+        when(dietMapper.summaryOnDate(eq(7L), any(), any())).thenReturn(row);
+
+        provider.collect(7L, ctx);
+
+        verify(dietMapper).summaryOnDate(eq(7L), any(), any());
     }
 }
