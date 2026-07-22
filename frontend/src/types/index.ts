@@ -157,7 +157,7 @@ export type ExtraErrorCodeValue = (typeof ExtraErrorCode)[keyof typeof ExtraErro
 // ----------------------------------------------------------------------
 
 /** 任务状态字面值（与后端 TaskConstants 对齐）。 */
-export type TaskStatus = 0 | 1 | 2;          // TODO | DONE | CANCELLED
+export type TaskStatus = 0 | 1 | 2;
 export const TaskStatusValue = {
   TODO: 0,
   DONE: 1,
@@ -165,7 +165,7 @@ export const TaskStatusValue = {
 } as const;
 
 /** 任务优先级字面值（与后端 TaskConstants 对齐）。 */
-export type TaskPriority = 0 | 1 | 2 | 3;     // NONE | LOW | MEDIUM | HIGH
+export type TaskPriority = 0 | 1 | 2 | 3;
 export const TaskPriorityValue = {
   NONE: 0,
   LOW: 1,

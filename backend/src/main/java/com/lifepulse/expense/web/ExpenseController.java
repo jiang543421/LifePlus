@@ -60,7 +60,6 @@ public class ExpenseController {
         this.service = service;
     }
 
-    // ---------- list ----------
 
     @GetMapping
     public MyResponse<PageResponse<ExpenseListItem>> list(
@@ -77,14 +76,12 @@ public class ExpenseController {
         return MyResponse.ok(service.list(filter));
     }
 
-    // ---------- get ----------
 
     @GetMapping("/{id}")
     public MyResponse<ExpenseResponse> get(@PathVariable long id) {
         return MyResponse.ok(service.getById(id));
     }
 
-    // ---------- create ----------
 
     @PostMapping
     public ResponseEntity<MyResponse<ExpenseResponse>> create(@Valid @RequestBody CreateExpenseRequest req) {
@@ -92,7 +89,6 @@ public class ExpenseController {
         return ResponseEntity.status(HttpStatus.CREATED).body(MyResponse.ok(created));
     }
 
-    // ---------- update (PATCH: all fields nullable) ----------
 
     @PatchMapping("/{id}")
     public MyResponse<Void> update(@PathVariable long id,
@@ -101,7 +97,6 @@ public class ExpenseController {
         return MyResponse.ok(null);
     }
 
-    // ---------- delete ----------
 
     @DeleteMapping("/{id}")
     public MyResponse<Void> delete(@PathVariable long id) {
@@ -109,7 +104,6 @@ public class ExpenseController {
         return MyResponse.ok(null);
     }
 
-    // ---------- summary ----------
 
     @GetMapping("/summary")
     public MyResponse<ExpenseSummaryResponse> summary(@RequestParam int year,
@@ -122,14 +116,12 @@ public class ExpenseController {
         return MyResponse.ok(service.summary(year, month));
     }
 
-    // ---------- categories ----------
 
     @GetMapping("/categories")
     public MyResponse<List<CategoryItem>> categories() {
         return MyResponse.ok(service.categories());
     }
 
-    // ---------- private helpers ----------
 
     private static void validatePage(int page, int size) {
         if (page < 1) {

@@ -86,7 +86,7 @@ public class DailyReportService {
         ExpenseMetrics expense = expenseProvider.aggregateDaily(userId, date);
         DietMetrics diet = dietProvider.aggregateDaily(userId, date);
 
-        log.debug("daily user={} date={} done={}/{} events={} amount={} diet.enabled={}",
+        log.debug("daily.aggregated user={} date={} done={}/{} events={} amount={} diet.enabled={}",
                 userId, date, task.completedCount(), task.totalCount(),
                 plan.eventCount(), expense.totalAmount(), diet.enabled());
 
@@ -128,7 +128,7 @@ public class DailyReportService {
                 planTriplet(current, previous),
                 expenseTriplet(current, previous));
 
-        log.debug("week user={} week={} ({}~{}) currentDone={} prevDone={} currentAmt={} prevAmt={}",
+        log.debug("weekly.aggregated user={} week={} ({}~{}) currentDone={} prevDone={} currentAmt={} prevAmt={}",
                 userId, isoWeek, weekStart, weekEnd,
                 current.totalCompleted(), previous.totalCompleted(),
                 current.amountSum(), previous.amountSum());
@@ -136,7 +136,6 @@ public class DailyReportService {
         return new WeeklyReportPayload(isoWeek, weekStart, weekEnd, comparison);
     }
 
-    // ---- 内部辅助 ----
 
     /**
      * 校验目标日期是否在 {@link DailyConstants#MAX_HISTORY_DAYS} 窗口内。

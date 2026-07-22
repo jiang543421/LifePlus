@@ -55,7 +55,6 @@ public class UserService {
         this.rateLimiter = rateLimiter;
     }
 
-    // ---------- updateNickname ----------
 
     /**
      * 更新昵称；trim 后空字符串落为 {@code null}（允许清空）。
@@ -82,7 +81,6 @@ public class UserService {
         return UserResponse.from(u);
     }
 
-    // ---------- changePassword ----------
 
     /**
      * 修改密码：BCrypt 校验旧密码 → 编码新密码 → 撤销所有 refresh token。
@@ -113,7 +111,6 @@ public class UserService {
         log.info("password changed uid={} revokedRefreshTokens={}", userId, revoked);
     }
 
-    // ---------- deleteAccount ----------
 
     /**
      * 注销账号：BCrypt 校验当前密码 → 软删（{@code @TableLogic} 翻 {@code deleted=1}）
@@ -145,7 +142,6 @@ public class UserService {
         log.info("account deleted uid={} revokedRefreshTokens={}", userId, revoked);
     }
 
-    // ---------- private helpers ----------
 
     private void requireUserId(Long userId) {
         if (userId == null) {

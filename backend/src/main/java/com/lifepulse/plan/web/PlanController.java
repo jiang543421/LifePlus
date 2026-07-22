@@ -55,7 +55,6 @@ public class PlanController {
         this.service = service;
     }
 
-    // ---------- list ----------
 
     @GetMapping
     public MyResponse<PageResponse<PlanListItem>> list(
@@ -72,14 +71,12 @@ public class PlanController {
         return MyResponse.ok(service.pageByUser(filter));
     }
 
-    // ---------- get ----------
 
     @GetMapping("/{id}")
     public MyResponse<PlanResponse> get(@PathVariable long id) {
         return MyResponse.ok(service.getById(id));
     }
 
-    // ---------- create ----------
 
     @PostMapping
     public ResponseEntity<MyResponse<PlanResponse>> create(@Valid @RequestBody PlanCreateRequest req) {
@@ -87,7 +84,6 @@ public class PlanController {
         return ResponseEntity.status(HttpStatus.CREATED).body(MyResponse.ok(created));
     }
 
-    // ---------- update ----------
 
     @PutMapping("/{id}")
     public MyResponse<Void> update(@PathVariable long id,
@@ -96,7 +92,6 @@ public class PlanController {
         return MyResponse.ok(null);
     }
 
-    // ---------- delete ----------
 
     @DeleteMapping("/{id}")
     public MyResponse<Void> delete(@PathVariable long id) {
@@ -104,7 +99,6 @@ public class PlanController {
         return MyResponse.ok(null);
     }
 
-    // ---------- private helpers ----------
 
     private static void validatePage(int page, int size) {
         if (page < 1) {

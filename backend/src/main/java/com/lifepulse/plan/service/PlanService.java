@@ -47,7 +47,6 @@ public class PlanService {
         this.mapper = mapper;
     }
 
-    // ---------- create ----------
 
     /**
      * 创建计划：当前 user 即归属者；未登录（防御性）→ 抛 1002。
@@ -74,7 +73,6 @@ public class PlanService {
         return PlanResponse.from(p);
     }
 
-    // ---------- getById ----------
 
     /**
      * 按 id 取计划详情；跨用户/不存在/已软删 → 抛 1003（与 Task 同款：MVP1 不拆分
@@ -90,7 +88,6 @@ public class PlanService {
                 });
     }
 
-    // ---------- update ----------
 
     /**
      * 局部更新：所有字段为 {@code null} 时跳过；其他值覆盖原值。
@@ -119,7 +116,6 @@ public class PlanService {
         log.debug("plan updated uid={} id={}", userId, id);
     }
 
-    // ---------- softDelete ----------
 
     /**
      * 软删（{@code @TableLogic} 触发 SQL 改 {@code deleted=1}）；先校验所有权。
@@ -136,7 +132,6 @@ public class PlanService {
         log.debug("plan softDelete uid={} id={}", userId, id);
     }
 
-    // ---------- pageByUser ----------
 
     /**
      * 日历范围分页查询；{@code from/to} 在 SQL 中以 {@code IS NULL} 跳过。
@@ -152,7 +147,6 @@ public class PlanService {
         return PageResponse.of(items, total, f.page(), f.size());
     }
 
-    // ---------- private helpers ----------
 
     /**
      * 取当前 userId；filter 漏检时（防御性）抛 1002。

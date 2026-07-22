@@ -71,7 +71,6 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
     }
 
-    // ---------- register ----------
 
     @Transactional
     public Long register(RegisterRequest req, String ip) {
@@ -104,7 +103,6 @@ public class AuthService {
         return u.getId();
     }
 
-    // ---------- login ----------
 
     public AuthResponse login(LoginRequest req, String ip) {
         // 1. 查 user；不存在或密码错统一 1002（防账号枚举），
@@ -134,7 +132,6 @@ public class AuthService {
         }
     }
 
-    // ---------- refresh ----------
 
     @Transactional
     public AuthResponse refresh(RefreshRequest req, String ip) {
@@ -186,7 +183,6 @@ public class AuthService {
         return issueAndPersist(userId);
     }
 
-    // ---------- logout ----------
 
     public void logout(LogoutRequest req) {
         String hash = sha256Hex(req.refreshToken());
@@ -198,7 +194,6 @@ public class AuthService {
         refreshTokenMapper.revokeByHash(hash, OffsetDateTime.now());
     }
 
-    // ---------- private helpers ----------
 
     private AuthResponse issueAndPersist(Long userId) {
         String accessToken = jwtService.issueAccess(userId);
@@ -238,11 +233,4 @@ public class AuthService {
         return sha256Hex(email.toLowerCase()).substring(0, 8);
     }
 
-    /** 预留：raw refresh token 生成器（1.2-E 端到端 IT 可能调用验证）。 */
-    @SuppressWarnings("unused")
-    static String newRawRefreshToken() {
-        byte[] buf = new byte[AuthConstants.REFRESH_TOKEN_BYTES];
-        RNG.nextBytes(buf);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
     }
-}

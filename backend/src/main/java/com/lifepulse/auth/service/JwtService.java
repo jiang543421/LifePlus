@@ -99,7 +99,6 @@ public class JwtService {
         }
     }
 
-    // ---------- private ----------
 
     private String issueToken(Long userId, String typ, Duration ttl) {
         Date now = new Date();

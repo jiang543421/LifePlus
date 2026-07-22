@@ -42,7 +42,6 @@ public class TaskService {
         this.planMapper = planMapper;
     }
 
-    // ---------- create ----------
 
     /**
      * 创建任务：当前 user 即归属者；可选字段 {@code null} 跳过 → DB DEFAULT。
@@ -67,7 +66,6 @@ public class TaskService {
         return TaskResponse.from(t);
     }
 
-    // ---------- getById ----------
 
     /**
      * 按 id 取任务详情；跨用户/不存在/已软删 → 抛 1003（与"不存在"统一码，
@@ -84,7 +82,6 @@ public class TaskService {
                 });
     }
 
-    // ---------- update ----------
 
     /**
      * 局部更新：所有字段为 {@code null} 时跳过；其他值覆盖原值。
@@ -114,7 +111,6 @@ public class TaskService {
         log.debug("task updated uid={} id={}", userId, id);
     }
 
-    // ---------- patchStatus ----------
 
     /**
      * 状态切换（专用端点）；用 {@link TaskMapper#updateStatusByUser} 一次 SQL 命中，
@@ -130,7 +126,6 @@ public class TaskService {
         log.debug("task patchStatus uid={} id={} status={}", userId, id, status);
     }
 
-    // ---------- softDelete ----------
 
     /**
      * 软删（{@code @TableLogic} 触发 SQL 改 {@code deleted=1}）；先校验所有权。
@@ -147,7 +142,6 @@ public class TaskService {
         log.debug("task softDelete uid={} id={}", userId, id);
     }
 
-    // ---------- listByPlan ----------
 
     /**
      * 列出某 plan 下的任务；按 {@code user_id + plan_id} 隔离；空 plan 返回空列表。
@@ -159,7 +153,6 @@ public class TaskService {
                 .toList();
     }
 
-    // ---------- pageByUser ----------
 
     /**
      * 分页查询；过滤参数 {@code null} 在 SQL 中以 {@code IS NULL} 跳过（详见 mapper）。
@@ -179,7 +172,6 @@ public class TaskService {
         return PageResponse.of(items, total, f.page(), f.size());
     }
 
-    // ---------- private helpers ----------
 
     /**
      * 取当前 userId；filter 漏检时（防御性）抛 1002。
@@ -194,8 +186,8 @@ public class TaskService {
     }
 
     /**
-     * 校验 plan 归属（CLAUDE.md §7.2 跨用户越权硬门 — Phase 3 兜底 Phase 2-B 留的
-     * TODO=plan-cross-user）。{@code planId == null} 表示不关联 plan，跳过校验。
+     * 校验 plan 归属（CLAUDE.md §7.2 跨用户越权硬门）。
+     * {@code planId == null} 表示不关联 plan，跳过校验。
      * 跨用户 / 不存在 / 已软删 → 抛 1003，与 service 其它方法语义一致。
      */
     private void requireOwnedPlan(Long userId, Long planId) {
