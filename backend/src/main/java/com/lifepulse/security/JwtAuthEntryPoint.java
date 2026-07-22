@@ -2,7 +2,7 @@ package com.lifepulse.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.web.MyResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -39,7 +39,7 @@ public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
         MyResponse<Void> body = MyResponse.error(
-                AuthConstants.ERR_BAD_CREDENTIALS, "未登录或凭证失效");
+                ErrorCode.BAD_CREDENTIALS, "未登录或凭证失效");
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
