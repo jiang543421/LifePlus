@@ -48,11 +48,11 @@
 | MVP2 v1.2.1 | 消费 expense 模块 | ✅ 已发布（tag `v1.2.1`） |
 | MVP2 v1.2.2 | 饮食 diet 模块 + R-006 / Bug #1 收口 | ✅ 已发布（tag `v1.2.2`） |
 | MVP2 v1.2.3 | 日报 daily 后端能力（聚合端点 + 周报对照） | ✅ 后端已发布（tag `v1.2.3`，PR #15）；前端接入留待 v1.2.4 |
-| MVP2 v2.0.0-ai | AI 分析 v2.0（智能卡 + 详情抽屉；5 Provider 聚合） | ✅ 已发布（tag `v2.0.0-ai`，PR #16-#21 squash → `main`） |
+| MVP2 v2.0.0-ai | AI 分析 v2.0（智能卡 + 详情抽屉；5 Provider 聚合） | ✅ 已发布（tag `v2.0.0-ai`，PR #16 squash → `main`） |
 
 > v1.2.3 拆 PR scope：模块骨架（Constants / 4 Provider / DTO）已在 main 多次小 PR 中并入，squash 合并的 PR #15 主要带上 service 编排 + controller + IT 切片（含 11 用例 / 性能 P95）。Diet 永久禁用（`DietMetrics.enabled=false`），与 spec §3 / plan §T6 一致。
 >
-> v2.0.0-ai 拆 PR scope（PR #16-#21 squash → main）：#16 脚手架+领域模型+模板引擎；#17 5 Provider 实现+单测；#18 Service 编排+缓存+降级；#19 Controller+限流+鉴权+IT；#20 前端（types+api+AiDrawer+HomeView 接入）；#21 E2E+文档收尾。AI 模块无 schema 变更，仅读 5 个既有表 + Redis 缓存命名空间新增 `ai:insight:*` / `lp:rl:ai:insight:*`。详见 [RELEASES/v2.0.0-ai.md](../../RELEASES/v2.0.0-ai.md) §4.2 偏差表。
+> v2.0.0-ai 在 PR #16 squash → main 一次性合并（22 commit）：脚手架 + 领域模型 + 模板引擎；5 Provider 实现 + 单测；Service 编排 + 缓存 + 降级；Controller + 限流 + 鉴权 + IT；前端（types + api + AiDrawer + HomeView 接入）；E2E + 文档收尾。AI 模块无 schema 变更，仅读 5 个既有表 + Redis 缓存命名空间新增 `ai:insight:*` / `lp:rl:ai:insight:*`。详见 [RELEASES/v2.0.0-ai.md](../../RELEASES/v2.0.0-ai.md) §4.2 偏差表。
 
 ---
 

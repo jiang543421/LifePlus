@@ -138,7 +138,7 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 | [v1.2.1](RELEASES/v1.2.1.md) | 2026-07-20 | MVP2 第一阶段：消费（expense）模块 |
 | [v1.0.0-mvp](RELEASES/v1.0.0-mvp.md) | 2026-07-15 | MVP1 首个 release：邮箱+密码认证、任务、计划、首页 6 卡 |
 
-> 最新发布：`v2.0.0-ai`（PR #21 squash merge to `main` @ TBD-merge-commit）— AI 分析 v2.0：5 Provider 聚合 + Redis 30min 缓存 + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST），无 schema 变更，详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md)。
+> 最新发布：`v2.0.0-ai`（PR #16 squash merge to `main` @ `946995b`）— AI 分析 v2.0：5 Provider 聚合 + Redis 30min 缓存 + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST），无 schema 变更，详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md)。
 >
 > 上一稳定版：`v1.2.3`（PR #15 squash merge to `main` @ `ccb51dd`）— 含 `GET /api/v1/daily` + `GET /api/v1/daily/week` 两个聚合端点，diet 永久禁用，无 schema 变更。
 
