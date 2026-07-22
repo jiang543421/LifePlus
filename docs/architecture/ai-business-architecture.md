@@ -20,15 +20,15 @@
 | 模块 | 类型 | 职责 | 边界（不做） |
 |---|---|---|---|
 | `AiInsightService` | Service | 编排 5 个 Provider → 聚合 → 模板渲染 → 缓存 | 不写日志到 DB、不调外部 API |
-| `TaskMetricProvider` | Provider | 读 `t_task` 当日完成率 + 周趋势 | 不修改任务、不算逾期 |
-| `PlanMetricProvider` | Provider | 读 `t_plan` 当日活动分钟 + 峰值小时 | 不写新事件、不改计划 |
-| `ExpenseMetricProvider` | Provider | 读 `t_expense` 当日 + 本周支出与分类环 | 不算预算、不提醒 |
-| `DietMetricProvider` | Provider | 读 `t_diet` 当日热量 + 蛋白达标率 | 不算 BMI、不推荐食谱 |
+| `TaskAiProvider` | Provider | 读 `t_task` 当日完成率 + 周趋势 | 不修改任务、不算逾期 |
+| `PlanAiProvider` | Provider | 读 `t_plan` 当日活动分钟 + 峰值小时 | 不写新事件、不改计划 |
+| `ExpenseAiProvider` | Provider | 读 `t_expense` 当日 + 本周支出与分类环 | 不算预算、不提醒 |
+| `DietAiProvider` | Provider | 读 `t_diet` 当日热量 + 蛋白达标率 | 不算 BMI、不推荐食谱 |
 | `DailyAiProvider` | Provider | 读 daily 报告均值（开关受 `lp.ai.daily-enabled` 控制） | daily 模块自身报告逻辑 |
 | `AiTemplateEngine` | Engine | 从 `ai-templates.properties` 加载 + `MessageFormat` 渲染 + 降级 | 不做国际化切换 |
 | `AiInsightController` | Web | `GET /api/v1/ai/insight/today` + `POST /api/v1/ai/insight/refresh`，鉴权 + 限流 | 不暴露内部 Provider 状态 |
 
-> Provider 是**接口**，Service 通过 `Map<String, MetricProvider>` 注入；开关 false 的 Provider 注入空实现，返回 NONE。
+> Provider 是**接口**，Service 通过 `Map<String, AiInsightProvider>` 注入；开关 false 的 Provider 跳过，不进入聚合循环。
 
 ---
 
@@ -45,7 +45,7 @@
                   └──────┬──────────────┬───────┘
                          │              │
         ┌────────────────▼──┐      ┌────▼──────────────────┐
-        │  AiTemplateEngine   │      │  MetricProvider[]     │  Provider 层
+        │  AiTemplateEngine   │      │  AiInsightProvider[]  │  Provider 层
         │  (MessageFormat)    │      │  (5 impls)            │
         └─────────────────────┘      └─┬───────┬───────┬─────┘
                                        │       │       │

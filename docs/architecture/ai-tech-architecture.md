@@ -12,7 +12,7 @@
 |---|---|---|---|
 | Web | `com.lifepulse.ai.web` | `AiInsightController` | 单端点 + `@PreAuthorize` + 限流 |
 | Service | `com.lifepulse.ai.service` | `AiInsightService` | 编排 / 缓存 / 降级 |
-| Provider | `com.lifepulse.ai.provider` | `MetricProvider` (interface) + 5 impls | 各自领域单指标采集 |
+| Provider | `com.lifepulse.ai.provider` | `AiInsightProvider` (interface) + 5 impls | 各自领域单指标采集 |
 | Engine | `com.lifepulse.ai.service` | `AiTemplateEngine` | 模板加载 + 渲染 |
 | DTO | `com.lifepulse.ai.web.dto` | `AiInsightResponse`, `AiChipDto` | 响应序列化 |
 | Domain | `com.lifepulse.ai.model` | `AiInsightPayload`, `MetricValue`, `Trend` | 内部值对象 |
@@ -27,10 +27,10 @@
 ## 2. 关键类签名
 
 ```java
-public interface MetricProvider {
-    String key();                       // "taskCompletion" | "weeklyExpense" | ...
-    default boolean enabled() { return true; }
-    MetricValue collect(AiCollectContext ctx);  // 异常 → MetricValue.none()
+public interface AiInsightProvider {
+    String key();                                // "taskCompletion" | "weeklyExpense" | ...
+    boolean isEnabled(Long userId);              // 读 lp.ai.* 开关 + 运行时条件
+    MetricValue collect(Long userId, AiCollectContext ctx);  // 失败抛异常，由 Service catch
 }
 
 public record AiCollectContext(long userId, LocalDate today, LocalDate weekStart) {}
