@@ -2,6 +2,7 @@ package com.lifepulse.plan.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.exception.GlobalExceptionHandler;
 import com.lifepulse.common.web.PageResponse;
@@ -162,7 +163,7 @@ class PlanControllerWebTest {
     void list_pageZero_returns1001() throws Exception {
         mvc.perform(get("/api/v1/plans").param("page", "0").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("page must be >= 1"));
 
         verify(planService, never()).pageByUser(any());
@@ -172,7 +173,7 @@ class PlanControllerWebTest {
     void list_sizeAboveMax_returns1001() throws Exception {
         mvc.perform(get("/api/v1/plans").param("size", "999").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(planService, never()).pageByUser(any());
     }
@@ -200,11 +201,11 @@ class PlanControllerWebTest {
     @Test
     void get_crossUser_returns1003_403() throws Exception {
         when(planService.getById(11L))
-                .thenThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该计划"));
+                .thenThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该计划"));
 
         mvc.perform(get("/api/v1/plans/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该计划"));
     }
 
@@ -244,7 +245,7 @@ class PlanControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(planService, never()).create(any());
     }
@@ -258,7 +259,7 @@ class PlanControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(planService, never()).create(any());
     }
@@ -272,7 +273,7 @@ class PlanControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(planService, never()).create(any());
     }
@@ -290,7 +291,7 @@ class PlanControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(planService, never()).create(any());
     }
@@ -299,7 +300,7 @@ class PlanControllerWebTest {
     void create_endTimeNotAfterStart_serviceThrows1001_returns400() throws Exception {
         // DTO 通过（DTO 无跨字段校验）；service 抛 1001
         when(planService.create(any(PlanCreateRequest.class)))
-                .thenThrow(new BusinessException(AuthConstants.ERR_VALIDATION, "结束时间必须晚于开始时间"));
+                .thenThrow(new BusinessException(ErrorCode.VALIDATION, "结束时间必须晚于开始时间"));
 
         PlanCreateRequest req = new PlanCreateRequest(
                 "倒序",
@@ -312,7 +313,7 @@ class PlanControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("结束时间必须晚于开始时间"));
     }
 
@@ -335,7 +336,7 @@ class PlanControllerWebTest {
 
     @Test
     void update_crossUser_returns1003() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该计划"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该计划"))
                 .when(planService).update(anyLong(), any(PlanUpdateRequest.class));
 
         PlanUpdateRequest req = new PlanUpdateRequest(
@@ -346,7 +347,7 @@ class PlanControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- delete ----------
@@ -362,12 +363,12 @@ class PlanControllerWebTest {
 
     @Test
     void delete_crossUser_returns1003() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该计划"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该计划"))
                 .when(planService).softDelete(anyLong());
 
         mvc.perform(delete("/api/v1/plans/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- auth ----------
@@ -376,7 +377,7 @@ class PlanControllerWebTest {
     void noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/plans"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(planService, never()).pageByUser(any());
     }

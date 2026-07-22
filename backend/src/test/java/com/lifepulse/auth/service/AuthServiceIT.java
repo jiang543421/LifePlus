@@ -1,6 +1,7 @@
 package com.lifepulse.auth.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.dto.LoginRequest;
@@ -129,7 +130,7 @@ class AuthServiceIT extends AbstractIntegrationTest {
         RefreshRequest replay = new RefreshRequest(first.refreshToken());
         assertThatThrownBy(() -> authService.refresh(replay, ip))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
 
         cleanupRedis(
                 AuthConstants.LOGIN_RL_KEY_PREFIX + ip + ":" + AuthService.emailKeySuffix(email),
@@ -151,14 +152,14 @@ class AuthServiceIT extends AbstractIntegrationTest {
             assertThatThrownBy(() -> authService.login(wrongPwd, ip))
                     .as("第 %d 次应抛 1002（密码错）", i)
                     .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_BAD_CREDENTIALS);
+                    .hasFieldOrPropertyWithValue("code", ErrorCode.BAD_CREDENTIALS);
         }
 
         // Assert: 第 6 次抛 1006
         assertThatThrownBy(() -> authService.login(wrongPwd, ip))
                 .as("第 6 次必抛 1006")
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_LOGIN_RATE_LIMIT);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.LOGIN_RATE_LIMIT);
 
         cleanupRedis(
                 AuthConstants.LOGIN_RL_KEY_PREFIX + ip + ":" + AuthService.emailKeySuffix(email),
@@ -181,7 +182,7 @@ class AuthServiceIT extends AbstractIntegrationTest {
         RegisterRequest fourth = new RegisterRequest("user-" + UUID.randomUUID() + "@example.com", "Valid1Pass", null);
         assertThatThrownBy(() -> authService.register(fourth, ip))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_LOGIN_RATE_LIMIT);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.LOGIN_RATE_LIMIT);
 
         cleanupRedis(AuthConstants.REGISTER_RL_KEY_PREFIX + ip);
     }

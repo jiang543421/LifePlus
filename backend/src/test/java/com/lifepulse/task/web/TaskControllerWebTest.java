@@ -2,6 +2,7 @@ package com.lifepulse.task.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.exception.GlobalExceptionHandler;
 import com.lifepulse.common.web.PageResponse;
@@ -167,7 +168,7 @@ class TaskControllerWebTest {
     void list_pageZero_returns1001() throws Exception {
         mvc.perform(get("/api/v1/tasks").param("page", "0").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("page must be >= 1"));
 
         verify(taskService, never()).pageByUser(any());
@@ -177,7 +178,7 @@ class TaskControllerWebTest {
     void list_sizeAboveMax_returns1001() throws Exception {
         mvc.perform(get("/api/v1/tasks").param("size", "999").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(taskService, never()).pageByUser(any());
     }
@@ -216,11 +217,11 @@ class TaskControllerWebTest {
     @Test
     void get_crossUser_returns1003_403() throws Exception {
         when(taskService.getById(11L))
-                .thenThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务"));
+                .thenThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务"));
 
         mvc.perform(get("/api/v1/tasks/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该任务"));
     }
 
@@ -256,7 +257,7 @@ class TaskControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(taskService, never()).create(any());
     }
@@ -270,7 +271,7 @@ class TaskControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(taskService, never()).create(any());
     }
@@ -293,7 +294,7 @@ class TaskControllerWebTest {
 
     @Test
     void update_crossUser_returns1003() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务"))
                 .when(taskService).update(anyLong(), any(TaskUpdateRequest.class));
 
         TaskUpdateRequest req = new TaskUpdateRequest("新", null, null, null, null, null);
@@ -303,7 +304,7 @@ class TaskControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- patchStatus ----------
@@ -332,14 +333,14 @@ class TaskControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(taskService, never()).patchStatus(anyLong(), anyInt());
     }
 
     @Test
     void patchStatus_noMatch_returns1003() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务"))
                 .when(taskService).patchStatus(anyLong(), anyInt());
 
         TaskStatusRequest req = new TaskStatusRequest(1);
@@ -349,7 +350,7 @@ class TaskControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- delete ----------
@@ -365,12 +366,12 @@ class TaskControllerWebTest {
 
     @Test
     void delete_crossUser_returns1003() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该任务"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该任务"))
                 .when(taskService).softDelete(anyLong());
 
         mvc.perform(delete("/api/v1/tasks/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- auth ----------
@@ -379,7 +380,7 @@ class TaskControllerWebTest {
     void noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/tasks"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(taskService, never()).pageByUser(any());
     }

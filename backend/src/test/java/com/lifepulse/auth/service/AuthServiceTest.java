@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.dto.LoginRequest;
@@ -129,7 +130,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.register(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_EMAIL_TAKEN);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMAIL_TAKEN);
         verify(userMapper, never()).insert(any(User.class));
     }
 
@@ -151,7 +152,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.register(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_EMAIL_TAKEN);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMAIL_TAKEN);
     }
 
     // ---------- login ----------
@@ -165,7 +166,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.login(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_BAD_CREDENTIALS);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.BAD_CREDENTIALS);
         verify(jwtService, never()).issueAccess(any());
         // C-2: email 不存在也计为失败 → rate-limit hit 应被调用
         verify(rateLimiter, times(1)).hit(anyString(), anyInt(), any());
@@ -185,7 +186,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.login(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_BAD_CREDENTIALS);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.BAD_CREDENTIALS);
         verify(jwtService, never()).issueAccess(any());
         // C-2: 密码错误才计 rate-limit
         verify(rateLimiter, times(1)).hit(anyString(), anyInt(), any());
@@ -227,7 +228,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.login(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_LOGIN_RATE_LIMIT);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.LOGIN_RATE_LIMIT);
     }
 
     @Test
@@ -262,13 +263,13 @@ class AuthServiceTest {
     void refresh_unknownToken_throwsBusinessException1401() {
         // Arrange: parseJwt 抛 1401 (unknown sub)
         when(jwtService.parse("bogus.token")).thenThrow(
-                new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "invalid token"));
+                new BusinessException(ErrorCode.REFRESH_INVALID, "invalid token"));
         RefreshRequest req = new RefreshRequest("bogus.token");
 
         // Act + Assert
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
     }
 
     @Test
@@ -282,7 +283,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
     }
 
     @Test
@@ -302,7 +303,7 @@ class AuthServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
     }
 
     // ---------- refresh audit (H-3) ----------
@@ -311,7 +312,7 @@ class AuthServiceTest {
     @Test
     void refresh_jwtParseFails_logsWarnAudit() {
         when(jwtService.parse("bogus.token")).thenThrow(
-                new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "invalid token"));
+                new BusinessException(ErrorCode.REFRESH_INVALID, "invalid token"));
         RefreshRequest req = new RefreshRequest("bogus.token");
 
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
@@ -332,7 +333,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
         assertThat(hasWarn("refresh replay: wrong typ")).isTrue();
     }
 
@@ -345,7 +346,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
         // 日志带 hash 前缀，便于关联但不暴露完整 hash
         assertThat(hasWarn("refresh replay: token not found or revoked")).isTrue();
         assertThat(hasWarn("hashPrefix=")).isTrue();
@@ -366,7 +367,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.refresh(req, "127.0.0.1"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
         assertThat(hasWarn("refresh replay: expired")).isTrue();
         assertThat(hasWarn("userId=7")).isTrue();
     }

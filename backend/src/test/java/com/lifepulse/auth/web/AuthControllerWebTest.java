@@ -3,6 +3,7 @@ package com.lifepulse.auth.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.AuthResponse;
 import com.lifepulse.auth.service.AuthService;
 import com.lifepulse.common.exception.BusinessException;
@@ -88,7 +89,7 @@ class AuthControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"not-an-email\",\"password\":\"pass1234\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
@@ -97,7 +98,7 @@ class AuthControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"short\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
@@ -106,7 +107,7 @@ class AuthControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"onlyletters\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
@@ -117,31 +118,31 @@ class AuthControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"password1\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
     void register_emailTaken_returns409WithCode1005() throws Exception {
         when(authService.register(any(), anyString()))
-                .thenThrow(new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email taken"));
+                .thenThrow(new BusinessException(ErrorCode.EMAIL_TAKEN, "email taken"));
 
         mvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"pass1234\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_EMAIL_TAKEN));
+                .andExpect(jsonPath("$.code").value(ErrorCode.EMAIL_TAKEN));
     }
 
     @Test
     void register_rateLimited_returns429WithCode1006() throws Exception {
         when(authService.register(any(), anyString()))
-                .thenThrow(new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "rate"));
+                .thenThrow(new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "rate"));
 
         mvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"pass1234\"}"))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
     }
 
     @Test
@@ -175,25 +176,25 @@ class AuthControllerWebTest {
     @Test
     void login_invalidCredentials_returns401WithCode1002() throws Exception {
         when(authService.login(any(), anyString()))
-                .thenThrow(new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "bad"));
+                .thenThrow(new BusinessException(ErrorCode.BAD_CREDENTIALS, "bad"));
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"wrong\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     @Test
     void login_rateLimited_returns429WithCode1006() throws Exception {
         when(authService.login(any(), anyString()))
-                .thenThrow(new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "rl"));
+                .thenThrow(new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "rl"));
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alice@example.com\",\"password\":\"pass1234\"}"))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
     }
 
     // ---------- refresh ----------
@@ -214,13 +215,13 @@ class AuthControllerWebTest {
     @Test
     void refresh_invalidToken_returns401WithCode1401() throws Exception {
         when(authService.refresh(any(), anyString()))
-                .thenThrow(new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "x"));
+                .thenThrow(new BusinessException(ErrorCode.REFRESH_INVALID, "x"));
 
         mvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refreshToken\":\"old\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_REFRESH_INVALID));
+                .andExpect(jsonPath("$.code").value(ErrorCode.REFRESH_INVALID));
     }
 
     @Test
@@ -229,7 +230,7 @@ class AuthControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refreshToken\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     // ---------- logout ----------
@@ -259,6 +260,6 @@ class AuthControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refreshToken\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 }

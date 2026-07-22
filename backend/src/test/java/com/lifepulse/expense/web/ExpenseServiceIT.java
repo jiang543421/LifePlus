@@ -3,6 +3,7 @@ package com.lifepulse.expense.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.RegisterRequest;
 import com.lifepulse.expense.ExpenseConstants;
@@ -147,7 +148,7 @@ class ExpenseServiceIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/expenses/" + expenseIdA)
                         .header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该消费"));
     }
 
@@ -172,7 +173,7 @@ class ExpenseServiceIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/expenses/" + expenseId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- case 4: empty summary ----------
@@ -267,7 +268,7 @@ class ExpenseServiceIT extends AbstractIntegrationTest {
                         .content("{\"amount\":\"1.00\",\"category\":\"MEAL\","
                                 + "\"note\":null,\"occurredAt\":\"2026-07-15T12:00:00Z\"}"))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
     }
 
     // ---------- helpers ----------

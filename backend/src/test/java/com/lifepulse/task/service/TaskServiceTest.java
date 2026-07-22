@@ -1,6 +1,7 @@
 package com.lifepulse.task.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.web.PageResponse;
 import com.lifepulse.security.UserContext;
@@ -97,7 +98,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(mapper, never()).insert(any(Task.class));
     }
@@ -127,7 +128,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper, never()).insert(any(Task.class));
     }
@@ -178,7 +179,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.getById(42L))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper).findByUserAndId(2L, 42L);
     }
@@ -244,7 +245,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.update(42L, req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper, never()).updateById(any(Task.class));
     }
@@ -261,7 +262,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.update(42L, req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper, never()).updateById(any(Task.class));
     }
@@ -323,7 +324,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.patchStatus(42L, TaskConstants.STATUS_DONE))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
     }
 
     // ---------- softDelete ----------
@@ -346,7 +347,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.softDelete(42L))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper, never()).deleteById(anyLong());
     }
@@ -448,7 +449,7 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> service.pageByUser(f))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(mapper, never()).pageByUser(anyLong(), any(), any(), any(), any(), any(), anyInt(), anyInt());
     }

@@ -2,6 +2,7 @@ package com.lifepulse.auth.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.UserResponse;
 import com.lifepulse.auth.entity.User;
 import com.lifepulse.auth.repository.UserMapper;
@@ -103,7 +104,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"NewName\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     @Test
@@ -142,7 +143,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
@@ -156,7 +157,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"X\"}"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_NOT_FOUND));
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND));
     }
 
     // ---------- POST /me/password (changePassword) ----------
@@ -167,7 +168,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"oldPassword\":\"Old12345\",\"newPassword\":\"New12345\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     @Test
@@ -193,7 +194,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"oldPassword\":\"wrong0000\",\"newPassword\":\"New12345\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     @Test
@@ -204,7 +205,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"oldPassword\":\"Old1234\",\"newPassword\":\"@@@@@@\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
@@ -214,7 +215,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"oldPassword\":\"Old1234\",\"newPassword\":\"Ab1\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     // ---------- DELETE /me (deleteAccount) ----------
@@ -225,7 +226,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"Pass1234\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     @Test
@@ -251,7 +252,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"wrong000\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     @Test
@@ -261,7 +262,7 @@ class UserSettingsWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     // ---------- helpers ----------

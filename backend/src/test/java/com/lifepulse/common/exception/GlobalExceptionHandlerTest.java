@@ -1,6 +1,7 @@
 package com.lifepulse.common.exception;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +55,7 @@ class GlobalExceptionHandlerTest {
     void businessException_mapsToMappedHttpStatusAndCarriesCode() throws Exception {
         mvc.perform(get("/__test__/business"))
                 .andExpect(status().isUnauthorized())              // 1002 → 401
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS))
                 .andExpect(jsonPath("$.message").value("test invalid creds"))
                 .andExpect(jsonPath("$.data").isEmpty());
     }
@@ -63,7 +64,7 @@ class GlobalExceptionHandlerTest {
     void businessException_conflictMapsTo409() throws Exception {
         mvc.perform(get("/__test__/conflict"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_EMAIL_TAKEN));
+                .andExpect(jsonPath("$.code").value(ErrorCode.EMAIL_TAKEN));
     }
 
     @Test
@@ -72,7 +73,7 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     @Test
@@ -87,12 +88,12 @@ class GlobalExceptionHandlerTest {
     static class TestStubController {
         @GetMapping("/business")
         public void business() {
-            throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "test invalid creds");
+            throw new BusinessException(ErrorCode.BAD_CREDENTIALS, "test invalid creds");
         }
 
         @GetMapping("/conflict")
         public void conflict() {
-            throw new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email taken");
+            throw new BusinessException(ErrorCode.EMAIL_TAKEN, "email taken");
         }
 
         @PostMapping("/validated")

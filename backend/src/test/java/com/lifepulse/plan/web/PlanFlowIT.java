@@ -3,6 +3,7 @@ package com.lifepulse.plan.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.RegisterRequest;
 import com.lifepulse.it.AbstractIntegrationTest;
@@ -212,7 +213,7 @@ class PlanFlowIT extends AbstractIntegrationTest {
         // GET /plans/{id} → 403 + 1003（service 抛 ERR_CROSS_USER，软删后不可见）
         mvc.perform(get("/api/v1/plans/" + planId).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- case 5: cross-user guard 1003 ----------
@@ -240,7 +241,7 @@ class PlanFlowIT extends AbstractIntegrationTest {
         // userB 试图读 userA 的 plan → 403 + 1003
         mvc.perform(get("/api/v1/plans/" + planIdA).header("Authorization", "Bearer " + accessTokenB))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该计划"));
 
         // userB 试图更新 userA 的 plan → 403 + 1003
@@ -249,12 +250,12 @@ class PlanFlowIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"hack\"}"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
 
         // userB 试图删除 userA 的 plan → 403 + 1003
         mvc.perform(delete("/api/v1/plans/" + planIdA).header("Authorization", "Bearer " + accessTokenB))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- case 6: range filter ----------

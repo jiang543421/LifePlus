@@ -1,6 +1,7 @@
 package com.lifepulse.auth.web;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.entity.User;
 import com.lifepulse.auth.repository.UserMapper;
 import com.lifepulse.auth.service.JwtService;
@@ -94,7 +95,7 @@ class UserControllerWebTest {
     void getMe_noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS))
                 .andExpect(jsonPath("$.message").value("未登录或凭证失效"));
     }
 

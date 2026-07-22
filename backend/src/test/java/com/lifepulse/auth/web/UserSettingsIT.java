@@ -3,6 +3,7 @@ package com.lifepulse.auth.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.ChangePasswordRequest;
 import com.lifepulse.auth.dto.DeleteAccountRequest;
 import com.lifepulse.auth.dto.LoginRequest;
@@ -148,7 +149,7 @@ class UserSettingsIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new RefreshRequest(refresh))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_REFRESH_INVALID));
+                .andExpect(jsonPath("$.code").value(ErrorCode.REFRESH_INVALID));
 
         // 新密码可以登录
         mvc.perform(post("/api/v1/auth/login")
@@ -170,7 +171,7 @@ class UserSettingsIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new ChangePasswordRequest("Wrong12345", "New1Pass"))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         // 原密码仍可登录（没改成功）
         mvc.perform(post("/api/v1/auth/login")
@@ -200,14 +201,14 @@ class UserSettingsIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new RefreshRequest(refresh))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_REFRESH_INVALID));
+                .andExpect(jsonPath("$.code").value(ErrorCode.REFRESH_INVALID));
 
         // 当前 access token 仍可存活至过期（≤1h）：GET /me 在 token 仍 valid 的窗口内
         // 应返回 1001/404（user 已被 @TableLogic 软删，selectById 返回 null）。
         // 这里仅断言该窗口内的失败响应。
         mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + access))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_NOT_FOUND));
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND));
     }
 
     // ---------- case 6: 注销幂等 ----------
@@ -245,7 +246,7 @@ class UserSettingsIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new DeleteAccountRequest("Wrong12345"))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         // 用户未删 → GET /me 仍 200
         mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + access))

@@ -3,6 +3,7 @@ package com.lifepulse.diet.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.RegisterRequest;
 import com.lifepulse.diet.DietConstants;
@@ -143,7 +144,7 @@ class DietServiceIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/diets/" + dietIdA)
                         .header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该饮食"));
     }
 
@@ -168,7 +169,7 @@ class DietServiceIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/diets/" + dietId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- case 4: summary aggregation correctness ----------
@@ -247,7 +248,7 @@ class DietServiceIT extends AbstractIntegrationTest {
                                 + "\"kcal\":\"1\",\"proteinG\":\"1\",\"carbG\":\"1\",\"fatG\":\"1\","
                                 + "\"occurredAt\":\"2026-07-15T12:00:00Z\"}"))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
     }
 
     // ---------- helpers ----------

@@ -1,6 +1,7 @@
 package com.lifepulse.security;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.service.JwtService;
 import com.lifepulse.common.exception.BusinessException;
 import io.jsonwebtoken.Claims;
@@ -107,7 +108,7 @@ class JwtAuthFilterTest {
     @Test
     void doFilter_invalidToken_clearsAuthAndChainProceeds() throws Exception {
         when(jwtService.parse("bad.token"))
-                .thenThrow(new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "bad"));
+                .thenThrow(new BusinessException(ErrorCode.REFRESH_INVALID, "bad"));
 
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.addHeader("Authorization", "Bearer bad.token");

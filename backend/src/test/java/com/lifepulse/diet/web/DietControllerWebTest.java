@@ -2,6 +2,7 @@ package com.lifepulse.diet.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.exception.GlobalExceptionHandler;
 import com.lifepulse.diet.dto.CreateDietRequest;
@@ -189,7 +190,7 @@ class DietControllerWebTest {
     void list_pageZero_returns1001() throws Exception {
         mvc.perform(get("/api/v1/diets").param("page", "0").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("page must be >= 1"));
 
         verify(dietService, never()).list(any(DietFilter.class));
@@ -199,7 +200,7 @@ class DietControllerWebTest {
     void list_sizeAboveMax_returns1001() throws Exception {
         mvc.perform(get("/api/v1/diets").param("size", "999").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(dietService, never()).list(any(DietFilter.class));
     }
@@ -221,11 +222,11 @@ class DietControllerWebTest {
     @Test
     void get_crossUser_returns1003_403() throws Exception {
         when(dietService.getById(11L))
-                .thenThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该饮食"));
+                .thenThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该饮食"));
 
         mvc.perform(get("/api/v1/diets/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该饮食"));
     }
 
@@ -262,7 +263,7 @@ class DietControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(dietService, never()).create(any(CreateDietRequest.class));
     }
@@ -278,7 +279,7 @@ class DietControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(dietService, never()).create(any(CreateDietRequest.class));
     }
@@ -295,7 +296,7 @@ class DietControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(dietService, never()).create(any(CreateDietRequest.class));
     }
@@ -303,7 +304,7 @@ class DietControllerWebTest {
     @Test
     void create_rateLimited_returns1006_429() throws Exception {
         when(dietService.create(any(CreateDietRequest.class)))
-                .thenThrow(new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "操作过于频繁，请稍后再试"));
+                .thenThrow(new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "操作过于频繁，请稍后再试"));
 
         CreateDietRequest req = new CreateDietRequest(
                 "LUNCH", "name", new BigDecimal("500.00"),
@@ -315,7 +316,7 @@ class DietControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
     }
 
     // ---------- update ----------
@@ -337,7 +338,7 @@ class DietControllerWebTest {
 
     @Test
     void update_crossUser_returns1003_403() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该饮食"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该饮食"))
                 .when(dietService).update(anyLong(), any(UpdateDietRequest.class));
 
         UpdateDietRequest req = new UpdateDietRequest(
@@ -348,7 +349,7 @@ class DietControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- delete ----------
@@ -364,12 +365,12 @@ class DietControllerWebTest {
 
     @Test
     void delete_crossUser_returns1003_403() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该饮食"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该饮食"))
                 .when(dietService).softDelete(anyLong());
 
         mvc.perform(delete("/api/v1/diets/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- summary ----------
@@ -395,7 +396,7 @@ class DietControllerWebTest {
     void summary_missingDate_returns1001() throws Exception {
         mvc.perform(get("/api/v1/diets/summary").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("date 不能为空"));
 
         verify(dietService, never()).summary(any(LocalDate.class));
@@ -441,7 +442,7 @@ class DietControllerWebTest {
     void noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/diets"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(dietService, never()).list(any(DietFilter.class));
     }

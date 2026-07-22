@@ -2,6 +2,7 @@ package com.lifepulse.expense.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.exception.GlobalExceptionHandler;
 import com.lifepulse.common.web.PageResponse;
@@ -179,7 +180,7 @@ class ExpenseControllerWebTest {
     void list_pageZero_returns1001() throws Exception {
         mvc.perform(get("/api/v1/expenses").param("page", "0").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("page must be >= 1"));
 
         verify(expenseService, never()).list(any(ExpenseFilter.class));
@@ -189,7 +190,7 @@ class ExpenseControllerWebTest {
     void list_sizeAboveMax_returns1001() throws Exception {
         mvc.perform(get("/api/v1/expenses").param("size", "999").with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(expenseService, never()).list(any(ExpenseFilter.class));
     }
@@ -214,11 +215,11 @@ class ExpenseControllerWebTest {
     @Test
     void get_crossUser_returns1003_403() throws Exception {
         when(expenseService.getById(11L))
-                .thenThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该消费"));
+                .thenThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该消费"));
 
         mvc.perform(get("/api/v1/expenses/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该消费"));
     }
 
@@ -256,7 +257,7 @@ class ExpenseControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(expenseService, never()).create(any(CreateExpenseRequest.class));
     }
@@ -273,7 +274,7 @@ class ExpenseControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(expenseService, never()).create(any(CreateExpenseRequest.class));
     }
@@ -282,7 +283,7 @@ class ExpenseControllerWebTest {
     void create_rateLimited_returns1006_429() throws Exception {
         // 复用 LOGIN_RATE_LIMIT 1006（与 ExpenseService.requireWriteRateLimit 一致）。
         when(expenseService.create(any(CreateExpenseRequest.class)))
-                .thenThrow(new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "操作过于频繁，请稍后再试"));
+                .thenThrow(new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "操作过于频繁，请稍后再试"));
 
         CreateExpenseRequest req = new CreateExpenseRequest(
                 new BigDecimal("35.00"), ExpenseCategory.MEAL, "午餐", fixedTime());
@@ -292,7 +293,7 @@ class ExpenseControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
     }
 
     // ---------- update ----------
@@ -314,7 +315,7 @@ class ExpenseControllerWebTest {
 
     @Test
     void update_crossUser_returns1003_403() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该消费"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该消费"))
                 .when(expenseService).update(anyLong(), any(UpdateExpenseRequest.class));
 
         UpdateExpenseRequest req = new UpdateExpenseRequest(
@@ -325,7 +326,7 @@ class ExpenseControllerWebTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- delete ----------
@@ -341,12 +342,12 @@ class ExpenseControllerWebTest {
 
     @Test
     void delete_crossUser_returns1003_403() throws Exception {
-        doThrow(new BusinessException(AuthConstants.ERR_CROSS_USER, "无权操作该消费"))
+        doThrow(new BusinessException(ErrorCode.CROSS_USER, "无权操作该消费"))
                 .when(expenseService).softDelete(anyLong());
 
         mvc.perform(delete("/api/v1/expenses/11").with(authentication(authToken())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- summary ----------
@@ -377,7 +378,7 @@ class ExpenseControllerWebTest {
                         .param("month", "13")
                         .with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message").value("year/month 非法"));
 
         verify(expenseService, never()).summary(anyInt(), anyInt());
@@ -390,7 +391,7 @@ class ExpenseControllerWebTest {
                         .param("month", "7")
                         .with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
 
         verify(expenseService, never()).summary(anyInt(), anyInt());
     }
@@ -419,7 +420,7 @@ class ExpenseControllerWebTest {
     void noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/expenses"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(expenseService, never()).list(any(ExpenseFilter.class));
     }

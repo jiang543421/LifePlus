@@ -3,6 +3,7 @@ package com.lifepulse.task.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.RegisterRequest;
 import com.lifepulse.it.AbstractIntegrationTest;
@@ -205,7 +206,7 @@ class TaskFlowIT extends AbstractIntegrationTest {
         // GET /tasks/{id} → 403 + 1003（service 抛 ERR_CROSS_USER，软删后不可见）
         mvc.perform(get("/api/v1/tasks/" + taskId).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER));
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER));
     }
 
     // ---------- case 5: cross-user guard 1003（实现 Phase 1 AuthFlowIT 桩） ----------
@@ -231,7 +232,7 @@ class TaskFlowIT extends AbstractIntegrationTest {
         // userB 试图读 userA 的 task → 403 + 1003
         mvc.perform(get("/api/v1/tasks/" + taskIdA).header("Authorization", "Bearer " + accessTokenB))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_CROSS_USER))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CROSS_USER))
                 .andExpect(jsonPath("$.message").value("无权操作该任务"));
     }
 

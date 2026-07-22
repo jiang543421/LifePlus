@@ -176,7 +176,7 @@ class DailyReportControllerWebTest {
         mvc.perform(get("/api/v1/daily").param("date", "2026-06-14")
                         .with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION))
                 .andExpect(jsonPath("$.message")
                         .value(org.hamcrest.Matchers.containsString("out of range")));
     }
@@ -229,7 +229,7 @@ class DailyReportControllerWebTest {
         mvc.perform(get("/api/v1/daily/week").param("date", "2026-06-14")
                         .with(authentication(authToken())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_VALIDATION));
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION));
     }
 
     // ---------- auth ----------
@@ -243,7 +243,7 @@ class DailyReportControllerWebTest {
 
         mvc.perform(get("/api/v1/daily"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(service, never()).daily(anyLong(), any(LocalDate.class));
     }
@@ -260,7 +260,7 @@ class DailyReportControllerWebTest {
 
         mvc.perform(get("/api/v1/daily").with(authentication(token)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS))
                 .andExpect(jsonPath("$.message")
                         .value(org.hamcrest.Matchers.containsString("missing authenticated user")));
 

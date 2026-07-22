@@ -1,6 +1,7 @@
 package com.lifepulse.plan.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.BusinessException;
 import com.lifepulse.common.web.PageResponse;
 import com.lifepulse.plan.PlanConstants;
@@ -160,7 +161,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_VALIDATION);
+                .extracting("code").isEqualTo(ErrorCode.VALIDATION);
 
         verify(mapper, never()).insert(any(Plan.class));
     }
@@ -176,7 +177,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_VALIDATION);
+                .extracting("code").isEqualTo(ErrorCode.VALIDATION);
 
         verify(mapper, never()).insert(any(Plan.class));
     }
@@ -191,7 +192,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(mapper, never()).insert(any(Plan.class));
     }
@@ -217,7 +218,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.getById(42L))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper).findByUserAndId(2L, 42L);
     }
@@ -226,7 +227,7 @@ class PlanServiceTest {
     void getById_unauthenticated_throws1002() {
         assertThatThrownBy(() -> service.getById(42L))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(mapper, never()).findByUserAndId(anyLong(), anyLong());
     }
@@ -317,7 +318,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.update(42L, req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper, never()).updateById(any(Plan.class));
     }
@@ -336,7 +337,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.update(42L, req))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_VALIDATION);
+                .extracting("code").isEqualTo(ErrorCode.VALIDATION);
 
         verify(mapper, never()).updateById(any(Plan.class));
     }
@@ -361,7 +362,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.softDelete(42L))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_CROSS_USER);
+                .extracting("code").isEqualTo(ErrorCode.CROSS_USER);
 
         verify(mapper, never()).deleteById(anyLong());
     }
@@ -422,7 +423,7 @@ class PlanServiceTest {
 
         assertThatThrownBy(() -> service.pageByUser(f))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(mapper, never()).pageByUser(anyLong(), any(), any(), anyInt(), anyInt());
     }

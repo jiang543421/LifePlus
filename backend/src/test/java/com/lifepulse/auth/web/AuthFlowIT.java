@@ -3,6 +3,7 @@ package com.lifepulse.auth.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.LoginRequest;
 import com.lifepulse.auth.dto.LogoutRequest;
 import com.lifepulse.auth.dto.RefreshRequest;
@@ -141,7 +142,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new RefreshRequest(refreshToken2))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_REFRESH_INVALID));
+                .andExpect(jsonPath("$.code").value(ErrorCode.REFRESH_INVALID));
     }
 
     // ---------- case 2: refresh 重放 → 1401 ----------
@@ -180,7 +181,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new RefreshRequest(refreshToken1))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_REFRESH_INVALID))
+                .andExpect(jsonPath("$.code").value(ErrorCode.REFRESH_INVALID))
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -206,7 +207,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonBody(new LoginRequest(email, "Wrong1Pass"))))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+                    .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
         }
 
         // 第 6 次：限流计数 = 6 > 5 → 1006/429
@@ -215,7 +216,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new LoginRequest(email, "Wrong1Pass"))))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT))
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT))
                 .andExpect(jsonPath("$.message").value("login rate limit exceeded"));
     }
 
@@ -243,7 +244,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody(new RegisterRequest(uniqueEmail(), "Valid1Pass", null))))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT))
+                .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT))
                 .andExpect(jsonPath("$.message").value("register rate limit exceeded"));
     }
 

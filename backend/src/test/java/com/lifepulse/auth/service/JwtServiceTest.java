@@ -1,6 +1,7 @@
 package com.lifepulse.auth.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.common.exception.BusinessException;
 import io.jsonwebtoken.Claims;
@@ -120,7 +121,7 @@ class JwtServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> shortSvc.parse(token))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
     }
 
     @Test
@@ -141,6 +142,6 @@ class JwtServiceTest {
         // Act + Assert
         assertThatThrownBy(() -> jwtService.parse(bad))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", AuthConstants.ERR_REFRESH_INVALID);
+                .hasFieldOrPropertyWithValue("code", ErrorCode.REFRESH_INVALID);
     }
 }

@@ -183,11 +183,11 @@ class AiInsightIT extends AbstractIntegrationTest {
     void noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/ai/insight/today"))
             .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+            .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         mvc.perform(post("/api/v1/ai/insight/refresh"))
             .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+            .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
     }
 
     // ===== helpers =====

@@ -1,6 +1,7 @@
 package com.lifepulse.auth.service;
 
 import com.lifepulse.auth.AuthConstants;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.auth.dto.UserResponse;
 import com.lifepulse.auth.entity.User;
 import com.lifepulse.auth.repository.RefreshTokenMapper;
@@ -108,7 +109,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.updateNickname(99L, "x"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_NOT_FOUND);
+                .extracting("code").isEqualTo(ErrorCode.NOT_FOUND);
 
         verify(userMapper, never()).updateNicknameById(anyLong(), anyString());
     }
@@ -117,7 +118,7 @@ class UserServiceTest {
     void updateNickname_nullUserId_throws1002() {
         assertThatThrownBy(() -> service.updateNickname(null, "x"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(userMapper, never()).selectById(anyLong());
     }
@@ -129,7 +130,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.updateNickname(7L, "newname"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_LOGIN_RATE_LIMIT);
+                .extracting("code").isEqualTo(ErrorCode.LOGIN_RATE_LIMIT);
 
         verify(userMapper, never()).selectById(anyLong());
         verify(userMapper, never()).updateNicknameById(anyLong(), anyString());
@@ -161,7 +162,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.changePassword(7L, "wrong", "newPass2"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(passwordEncoder, never()).encode(anyString());
         verify(userMapper, never()).updateById(any(User.class));
@@ -174,7 +175,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.changePassword(99L, "old", "newPass2"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_NOT_FOUND);
+                .extracting("code").isEqualTo(ErrorCode.NOT_FOUND);
 
         verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
@@ -186,7 +187,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.changePassword(7L, "oldPass1", "newPass2"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_LOGIN_RATE_LIMIT);
+                .extracting("code").isEqualTo(ErrorCode.LOGIN_RATE_LIMIT);
 
         verify(userMapper, never()).selectById(anyLong());
         verify(passwordEncoder, never()).matches(anyString(), anyString());
@@ -256,7 +257,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.deleteAccount(7L, "wrong"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(userMapper, never()).deleteById(anyLong());
         verify(refreshTokenMapper, never()).revokeAllByUserId(anyLong(), any(OffsetDateTime.class));
@@ -277,7 +278,7 @@ class UserServiceTest {
     void deleteAccount_nullUserId_throws1002() {
         assertThatThrownBy(() -> service.deleteAccount(null, "Pass1234"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_BAD_CREDENTIALS);
+                .extracting("code").isEqualTo(ErrorCode.BAD_CREDENTIALS);
 
         verify(userMapper, never()).selectById(anyLong());
     }
@@ -289,7 +290,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> service.deleteAccount(7L, "Pass1234"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(AuthConstants.ERR_LOGIN_RATE_LIMIT);
+                .extracting("code").isEqualTo(ErrorCode.LOGIN_RATE_LIMIT);
 
         verify(userMapper, never()).selectById(anyLong());
         verify(userMapper, never()).deleteById(anyLong());
