@@ -13,14 +13,16 @@ import java.util.Map;
 // t_expense MyBatis-Plus Mapper (plan T5).
 //
 // BaseMapper supplies insert / updateById / selectById / selectList / deleteById
-// generic CRUD (auto WHERE deleted = 0). Five custom SQL queries live in
+// generic CRUD (auto WHERE deleted = 0). Custom SQL queries live in
 // src/main/resources/mapper/expense/ExpenseMapper.xml
 // (MyBatis-Plus default scan classpath*:/mapper/**/*.xml, auto-loaded).
-//   findByUserAndId - cross-user 1003 defense core query
-//   listByUser - category + occurred_at range + page
-//   countByUser - total count paired with listByUser
-//   summaryByCategory - per-category aggregated amount
-//   summaryTotal - range total amount
+//   findByUserAndId          - cross-user 1003 defense core query
+//   listByUser               - category + occurred_at range + page
+//   countByUser              - total count paired with listByUser
+//   summaryByCategory        - per-category aggregated amount
+//   summaryTotal             - range total amount
+//   sumByUserOccurredBetween - AI 模块本周消费聚合（v2.0.0-ai，HEAD 侧新增）
+//   countByUserOnDay         - 日报聚合：目标日笔数（v1.2.3，origin/main 侧新增）
 //
 // All raw SQL must explicitly include AND deleted = 0;
 // the BaseMapper logical-delete filter does NOT apply to XML statements.
@@ -74,6 +76,15 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
     BigDecimal summaryTotal(@Param("userId") Long userId,
                             @Param("from") OffsetDateTime from,
                             @Param("to") OffsetDateTime to);
+
+    /**
+     * AI 模块专用：指定用户在 [from, to] 区间的支出合计（用于本周消费聚合）。
+     * 返回 {@code null} 表示无数据，调用方需自行处理（Provider 返回 ZERO）。
+     * 与 summaryTotal 字段一致，但语义聚焦在单调窗口。
+     */
+    BigDecimal sumByUserOccurredBetween(@Param("userId") Long userId,
+                                        @Param("from") OffsetDateTime from,
+                                        @Param("to") OffsetDateTime to);
 
     // ===== 日报聚合查询（v1.2.3 / daily 模块） =====
     // 设计说明：occurred_at 为 DATETIME(3) 按 UTC 存储（spec 06-expense §4）。

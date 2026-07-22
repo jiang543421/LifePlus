@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -15,11 +16,14 @@ import java.util.Optional;
  * t_plan MyBatis-Plus Mapper。
  *
  * <p>{@link BaseMapper} 提供 insert / updateById / selectById / selectList / deleteById 等
- * 通用 CRUD（自动 {@code WHERE deleted = 0}）。下方 3 个自定义方法覆盖：
+ * 通用 CRUD（自动 {@code WHERE deleted = 0}）。自定义方法覆盖：
  * <ul>
  *   <li>{@link #findByUserAndId} — 跨用户 1003 防御的基础</li>
  *   <li>{@link #pageByUser} — 日历范围查询（{@code start_time BETWEEN from AND to}），
  *       配套 {@link #countByUser} 算 total</li>
+ *   <li>{@link #countTodayEvents} — AI 模块日程密度聚合（v2.0.0-ai，HEAD 侧新增）</li>
+ *   <li>{@link #countByUserOnDay} / {@link #sumActiveMinutesByUserOnDay} /
+ *       {@link #selectHourBucketsByUserOnDay} — 日报聚合（v1.2.3，origin/main 侧新增）</li>
  * </ul>
  *
  * <p>所有 raw {@code @Select} 必须显式 {@code AND deleted = 0}，
@@ -87,6 +91,17 @@ public interface PlanMapper extends BaseMapper<Plan> {
     long countByUser(@Param("userId") Long userId,
                      @Param("from") LocalDateTime from,
                      @Param("to") LocalDateTime to);
+
+    /**
+     * 统计指定用户在指定日期的当日事件总数（按 start_time DATE 匹配）。
+     * 用于 AI 模块日程密度聚合（v2.0.0-ai）。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_plan
+            WHERE user_id = #{userId} AND deleted = 0
+              AND DATE(start_time) = #{date}
+            """)
+    int countTodayEvents(@Param("userId") Long userId, @Param("date") LocalDate date);
 
     // ===== 日报聚合查询（v1.2.3 / daily 模块） =====
     // 设计说明：start_time 为 DATETIME，"某日"语义为半开区间

@@ -114,6 +114,45 @@ export const AuthErrorCode = {
 export type AuthErrorCodeValue = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
 
 // ----------------------------------------------------------------------
+// AI 模块类型（spec docs/architecture/ai-data-model.md + 后端 AiInsightService）
+// ----------------------------------------------------------------------
+
+/** chip 趋势方向字面量（与后端 Trend enum 对齐：UP=绿 / DOWN=红 / FLAT=灰 / NONE=浅灰）。 */
+export type AiTrend = 'UP' | 'DOWN' | 'FLAT' | 'NONE';
+
+/** 单个 chip 显示项（与后端 AiChipDto record 对齐，字段顺序一致）。 */
+export interface AiChipDto {
+  key: string;
+  label: string;
+  /** 已渲染好的展示字符串（例 "80" / "¥420" / "3" / "—"）。 */
+  value: string;
+  unit: string;
+  trend: AiTrend;
+  /** 副标文案（例 "与昨日持平" / "今日 3 项（有空闲）"），空串表示无副标。 */
+  deltaText: string;
+}
+
+/** AI 洞察完整响应（GET /ai/insight/today、POST /ai/insight/refresh）。
+ * 字段顺序与后端 AiInsightResponse record 完全一致。 */
+export interface AiInsightResponse {
+  /** 中文主文（已渲染好，可直接展示）。 */
+  headline: string;
+  /** 固定 3 个 chip：taskCompletion → weeklyExpense → planDensity。 */
+  chips: AiChipDto[];
+  /** ISO-8601 datetime with offset（后端 Instant + Jackson）。 */
+  generatedAt: string;
+  /** 距生成的秒数（Controller 现算，负值钳为 0）。 */
+  freshnessSeconds: number;
+}
+
+/** 跨模块错误码常量 — 新增 AI 模块专属 1501（与后端 ErrorCode.AI_DEGRADED 对齐）。
+ * 不放进 AuthErrorCode 是因为该 map 仅刻画 auth 范围，留作未来扩展的 1xxx/15xx 通用区。 */
+export const ExtraErrorCode = {
+  AiDegraded: 1501,
+} as const;
+export type ExtraErrorCodeValue = (typeof ExtraErrorCode)[keyof typeof ExtraErrorCode];
+
+// ----------------------------------------------------------------------
 // Task 模块类型（spec §04 §1/§2/§3 + 后端 TaskResponse / TaskListItem）
 // ----------------------------------------------------------------------
 

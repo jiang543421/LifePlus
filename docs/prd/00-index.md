@@ -6,7 +6,8 @@
 > - [02-task-prd.md](./02-task-prd.md) — 任务模块
 > - [03-plan-prd.md](./03-plan-prd.md) — 日程模块
 > - [04-future-prd.md](./04-future-prd.md) — Phase 2 扩展模块
-> - [05-daily-report.md](./05-daily-report.md) — 日报模块(v1.2.3,Phase 2.1)
+- [05-daily-report.md](./05-daily-report.md) — 日报模块（v1.2.3 后端已发布，详见 [RELEASES/v1.2.3.md](../../RELEASES/v1.2.3.md)）
+- **AI 分析 v2.0**（v2.0.0-ai 已发布）：详见 [RELEASES/v2.0.0-ai.md](../../RELEASES/v2.0.0-ai.md) + [docs/superpowers/specs/2026-07-21-ai-v2-design.md](../superpowers/specs/2026-07-21-ai-v2-design.md)
 
 ---
 
@@ -39,13 +40,19 @@
 |---|---|---|
 | Phase 0 | 项目骨架、部署栈、规范文档、前后端脚手架 | ✅ 已完成 |
 | Phase 1.1 | 用户与登录会话数据落地、实体与数据层 | ✅ 已完成 |
-| Phase 1.2–1.4 | 认证服务、安全拦截、前端登录注册与端到端联调 | ⏳ 待启动 |
-| Phase 2 | 任务模块 | ⏳ 待启动 |
-| Phase 3 | 计划模块 | ⏳ 待启动 |
-| Phase 4 | 首页仪表盘与跨模块联动 | ⏳ 待启动 |
-| Phase 5 | 性能、安全、可观测、打磨与发布 | ⏳ 待启动 |
+| Phase 1.2–1.4 | 认证服务、安全拦截、前端登录注册与端到端联调 | ✅ 已完成 |
+| Phase 2 | 任务模块 | ✅ 已完成（v1.0.0-mvp） |
+| Phase 3 | 计划模块 | ✅ 已完成（v1.0.0-mvp） |
+| Phase 4 | 首页仪表盘与跨模块联动 | ✅ 已完成（v1.0.0-mvp） |
+| Phase 5 | 性能、安全、可观测、打磨与发布 | ✅ 已完成（v1.0.0-mvp） |
+| MVP2 v1.2.1 | 消费 expense 模块 | ✅ 已发布（tag `v1.2.1`） |
+| MVP2 v1.2.2 | 饮食 diet 模块 + R-006 / Bug #1 收口 | ✅ 已发布（tag `v1.2.2`） |
+| MVP2 v1.2.3 | 日报 daily 后端能力（聚合端点 + 周报对照） | ✅ 后端已发布（tag `v1.2.3`，PR #15）；前端接入留待 v1.2.4 |
+| MVP2 v2.0.0-ai | AI 分析 v2.0（智能卡 + 详情抽屉；5 Provider 聚合） | ✅ 已发布（tag `v2.0.0-ai`，PR #16-#21 squash → `main`） |
 
-> 单开发者节奏估算：**MVP1 完整可演示版本预计还需 4–6 周**。
+> v1.2.3 拆 PR scope：模块骨架（Constants / 4 Provider / DTO）已在 main 多次小 PR 中并入，squash 合并的 PR #15 主要带上 service 编排 + controller + IT 切片（含 11 用例 / 性能 P95）。Diet 永久禁用（`DietMetrics.enabled=false`），与 spec §3 / plan §T6 一致。
+>
+> v2.0.0-ai 拆 PR scope（PR #16-#21 squash → main）：#16 脚手架+领域模型+模板引擎；#17 5 Provider 实现+单测；#18 Service 编排+缓存+降级；#19 Controller+限流+鉴权+IT；#20 前端（types+api+AiDrawer+HomeView 接入）；#21 E2E+文档收尾。AI 模块无 schema 变更，仅读 5 个既有表 + Redis 缓存命名空间新增 `ai:insight:*` / `lp:rl:ai:insight:*`。详见 [RELEASES/v2.0.0-ai.md](../../RELEASES/v2.0.0-ai.md) §4.2 偏差表。
 
 ---
 
@@ -79,7 +86,7 @@
 |---|---|---|
 | 基本需求（Must-be） | 缺失即产品不可用：账号体系、数据隔离、会话安全 | **MVP 必做** |
 | 期望需求（One-dimensional） | 越多越好：任务/日程的核心 CRUD、筛选、日历视图 | **MVP 必做** |
-| 兴奋需求（Attractive） | 有了惊喜但缺失不致命：AI 趋势分析、智能提醒 | **Phase 2** |
+| 兴奋需求（Attractive） | 有了惊喜但缺失不致命：AI 趋势分析、智能提醒 | ✅ **v2.0.0-ai 已交付**（5 Provider 聚合 + 30min 缓存 + 抽屉）；独立分析页留 v2.1+ |
 | 无差异需求（Indifferent） | 用户不在意：界面主题色、动画细节 | 当前不做 |
 
 ### 5.2 RICE 模型与功能优先级
@@ -91,7 +98,7 @@
 | 日历事件 CRUD + 月视图 | 100% | 高 | 高 | 中 | 🥇 第一梯队 |
 | 首页卡片与跳转 | 100% | 中 | 高 | 低 | 🥈 第二梯队 |
 | 任务 ↔ 日程关联 | 60% | 中 | 高 | 低 | 🥈 第二梯队 |
-| AI 分析 | 100% | 理论高 | 低 | 高 | 🥉 Phase 2 |
+| AI 分析 | 100% | 理论高 | 低 | 高 | ✅ **v2.0.0-ai 已交付**（详见 [RELEASES/v2.0.0-ai.md](../../RELEASES/v2.0.0-ai.md)）|
 | 日报自动生成 | 80% | 中 | 中 | 高 | 🥉 Phase 2 |
 | 推送通知 | 70% | 中 | 高 | 中 | 🥉 Phase 2 |
 
@@ -118,7 +125,7 @@
 | 离线缓存/PWA | 增加前端状态复杂度，需权衡投入产出比 |
 | 支付与订阅 | 个人工具，盈利模型不在 MVP 范围 |
 | 多语言 | MVP1 仅中文，避免维护成本 |
-| 日报 / 消费 / 饮食 / AI 分析 | Phase 2；首页仅占位 |
+| 日报 / 消费 / 饮食 / AI 分析 | Phase 2；首页仅占位 → ✅ **v1.2.1（消费）/ v1.2.2（饮食）/ v1.2.3（日报后端）/ v2.0.0-ai（AI）均已发布**；日报前端 v1.2.4 待办 |
 | 推送通知 | 提醒时长仅记录字段，不发推送 |
 | 移动端原生 App | MVP1 仅 Web 响应式 |
 | 数据导入/导出 | Phase 2 视用户反馈决定 |

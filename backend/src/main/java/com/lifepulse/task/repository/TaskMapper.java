@@ -16,13 +16,17 @@ import java.util.Optional;
  * t_task MyBatis-Plus Mapper。
  *
  * <p>{@link BaseMapper} 提供 insert / updateById / selectById / selectList / deleteById 等
- * 通用 CRUD（自动 {@code WHERE deleted = 0}）。下方 5 个自定义方法覆盖：
+ * 通用 CRUD（自动 {@code WHERE deleted = 0}）。自定义方法覆盖：
  * <ul>
  *   <li>{@link #findByUserAndId} — 跨用户 1003 防御的基础</li>
  *   <li>{@link #updateStatusByUser} — 状态切换，返回受影响行数（0 → 1003/1004）</li>
  *   <li>{@link #listByPlan} — 按 plan_id 聚合</li>
  *   <li>{@link #pageByUser} — 过滤 + 分页（手写 {@code LIMIT/OFFSET}，不引入 MP 分页插件）</li>
  *   <li>{@link #countByUser} — 配合 pageByUser 计算 total</li>
+ *   <li>{@link #countTodayTasks} / {@link #countTodayCompletedTasks} — AI 模块任务完成率聚合（v2.0.0-ai，HEAD 侧新增）</li>
+ *   <li>{@link #countByUserDueBetween} / {@link #countCompletedByUserDueBetween} /
+ *       {@link #selectStatusBucketsByUserDueBetween} /
+ *       {@link #selectPriorityBucketsByUserDueBetween} — 日报聚合（v1.2.3，origin/main 侧新增）</li>
  * </ul>
  *
  * <p>所有 raw {@code @Select}/{@code @Update} 必须显式 {@code AND deleted = 0}，
@@ -122,6 +126,33 @@ public interface TaskMapper extends BaseMapper<Task> {
                      @Param("tag") String tag,
                      @Param("dueFrom") LocalDate dueFrom,
                      @Param("dueTo") LocalDate dueTo);
+
+    // ===== AI 模块聚合查询（v2.0.0-ai，HEAD 侧新增） =====
+    // 设计说明：v2.0.0-ai 完成判定语义为 "status = DONE AND due_date = targetDate"；
+    // V2 既有的 idx_user_status_due (user_id, status, due_date) 完美覆盖本组查询。
+
+    /**
+     * 统计指定用户在指定日期的当日任务总数（含已逻辑删除过滤）。
+     * 用于 AI 模块任务完成率聚合。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_task
+            WHERE user_id = #{userId} AND deleted = 0
+              AND due_date = #{date}
+            """)
+    int countTodayTasks(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+    /**
+     * 统计指定用户在指定日期的当日已完成任务数。
+     * 用于 AI 模块任务完成率聚合。
+     */
+    @Select("""
+            SELECT COUNT(*) FROM t_task
+            WHERE user_id = #{userId} AND deleted = 0
+              AND status = 1
+              AND due_date = #{date}
+            """)
+    int countTodayCompletedTasks(@Param("userId") Long userId, @Param("date") LocalDate date);
 
     // ===== 日报聚合查询（v1.2.3 / daily 模块） =====
     // 设计说明：v1.2.3 完成判定语义为 "status = DONE AND due_date BETWEEN ..."
