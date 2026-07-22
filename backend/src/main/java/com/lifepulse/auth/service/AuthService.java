@@ -238,11 +238,4 @@ public class AuthService {
         return sha256Hex(email.toLowerCase()).substring(0, 8);
     }
 
-    /** 预留：raw refresh token 生成器（1.2-E 端到端 IT 可能调用验证）。 */
-    @SuppressWarnings("unused")
-    static String newRawRefreshToken() {
-        byte[] buf = new byte[AuthConstants.REFRESH_TOKEN_BYTES];
-        RNG.nextBytes(buf);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
     }
-}
