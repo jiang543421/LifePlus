@@ -69,7 +69,22 @@ public class AiInsightService {
         if (cached != null) {
             return cached;
         }
+        return recomputeAndCache(userId);
+    }
 
+    /**
+     * 强制刷新（spec §4.4）：跳过缓存读，重算并覆写缓存。
+     * POST /api/v1/ai/insight/refresh 专用，限流更严（6/min/user）。
+     *
+     * @throws BusinessException 1501 当全部 provider 均无有效数据
+     */
+    public AiInsightResponse refreshInsight(long userId) {
+        return recomputeAndCache(userId);
+    }
+
+    /** 串联全部 provider、渲染、写缓存；共用于 getInsight / refreshInsight。 */
+    private AiInsightResponse recomputeAndCache(long userId) {
+        String cacheKey = cacheKey(userId);
         AiCollectContext ctx = AiCollectContext.nowInShanghai();
         List<MetricValue> collected = new ArrayList<>(providers.size());
         int successCount = 0;

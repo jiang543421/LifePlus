@@ -1,5 +1,7 @@
 package com.lifepulse.ai;
 
+import java.time.Duration;
+
 /**
  * AI 模块全局常量（spec §6.1 / §6.3 / §8）。
  *
@@ -38,6 +40,17 @@ public final class AiConstants {
     public static final String PROVIDER_EXPENSE = "expense";
     public static final String PROVIDER_DIET = "diet";
     public static final String PROVIDER_DAILY = "daily";
+
+    /** AI 洞察端点限流（spec §7.4）。按 userId 维度。GET 60/min 抗前端频繁拉取。 */
+    public static final int INSIGHT_GET_RL_MAX = 60;
+    public static final Duration INSIGHT_GET_RL_WINDOW = Duration.ofMinutes(1);
+
+    /** AI 洞察主动刷新端点限流：POST 6/min（spec §7.4）。 */
+    public static final int INSIGHT_REFRESH_RL_MAX = 6;
+    public static final Duration INSIGHT_REFRESH_RL_WINDOW = Duration.ofMinutes(1);
+
+    /** AI 洞察限流 Redis key 前缀：完整 key {@code lp:rl:ai:insight:<userId>}。 */
+    public static final String INSIGHT_RL_KEY_PREFIX = "lp:rl:ai:insight:";
 
     private AiConstants() {
         // 静态工具类，禁止实例化
