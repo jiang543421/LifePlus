@@ -1112,3 +1112,140 @@ export async function mockDietCrossUser(page: Page, dietId: number): Promise<voi
     });
   });
 }
+
+// ----------------------------------------------------------------------
+// AI 模块 mock（v2.0）
+// ----------------------------------------------------------------------
+
+/** 单条 AI 洞察 mock 数据（与后端 AiInsightResponse 对齐）。 */
+export interface MockAiInsight {
+  headline: string;
+  chips: Array<{
+    key: string;
+    label: string;
+    value: string;
+    unit: string;
+    trend: 'UP' | 'DOWN' | 'FLAT' | 'NONE';
+    deltaText: string;
+  }>;
+  generatedAt: string;
+  freshnessSeconds: number;
+}
+
+const DEFAULT_AI_INSIGHT: MockAiInsight = {
+  headline: '今日任务完成率 80%；本周消费 ¥420。',
+  chips: [
+    { key: 'taskCompletion', label: '任务完成', value: '80', unit: '%', trend: 'FLAT', deltaText: '与昨日持平' },
+    { key: 'weeklyExpense', label: '本周消费', value: '¥420', unit: '', trend: 'DOWN', deltaText: '较上周 -¥40' },
+    { key: 'planDensity', label: '日程', value: '3', unit: '项', trend: 'NONE', deltaText: '今日 3 项' },
+  ],
+  generatedAt: '2026-07-22T08:00:00Z',
+  freshnessSeconds: 12,
+};
+
+/** setupAiDefaults 返回的可变状态。 */
+export interface AiMockState {
+  insight: MockAiInsight;
+  todayCallCount: number;
+  refreshCallCount: number;
+}
+
+/**
+ * 一站式 AI mock：拦截 `/api/v1/ai/insight/today` 与 `/api/v1/ai/insight/refresh`。
+ *
+ * <p>`/today` 默认返回 {@link DEFAULT_AI_INSIGHT}；`/refresh` 默认重算
+ * freshnessSeconds=0 + 推进 generatedAt 用于断言"刷新后值被替换"。
+ * 闭包内状态便于测试断言调用次数与是否真的触发。
+ *
+ * <p>真实后端契约由 {@code backend/.../ai/AiInsightIT.java}（Testcontainers）覆盖。
+ */
+export async function setupAiDefaults(
+  page: Page,
+  opts?: { insight?: MockAiInsight },
+): Promise<AiMockState> {
+  const state: AiMockState = {
+    insight: opts?.insight ?? DEFAULT_AI_INSIGHT,
+    todayCallCount: 0,
+    refreshCallCount: 0,
+  };
+
+  await page.route('**/api/v1/ai/insight/**', async (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname.replace(/^\/api\/v1/, '');
+
+    if (req.method() === 'GET' && path === '/ai/insight/today') {
+      state.todayCallCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(state.insight),
+      });
+      return;
+    }
+
+    if (req.method() === 'POST' && path === '/ai/insight/refresh') {
+      state.refreshCallCount += 1;
+      const refreshed: MockAiInsight = {
+        ...state.insight,
+        freshnessSeconds: 0,
+        generatedAt: new Date().toISOString(),
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(refreshed),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: envelopeErr(1004, 'ai route not found'),
+    });
+  });
+
+  return state;
+}
+
+/**
+ * 强制 /today 返回指定错误码（1501 AI_DEGRADED / 1006 限流）。
+ * 用于覆盖默认 setupAiDefaults（注册时机：必须在 setupAiDefaults 之后调用，
+ * LIFO 让更具体的 URL 模式先生效）。
+ */
+export async function mockAiTodayError(page: Page, code: number): Promise<void> {
+  const status = code === 1006 ? 429 : 400;
+  const message =
+    code === 1501
+      ? 'AI 洞察数据暂时不可用，请稍后重试'
+      : code === 1006
+        ? 'AI 洞察请求过于频繁，请稍后重试'
+        : 'error';
+  await page.route('**/api/v1/ai/insight/today', async (route) => {
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: envelopeErr(code, message),
+    });
+  });
+}
+
+/**
+ * 强制 /refresh 返回指定错误码。
+ */
+export async function mockAiRefreshError(page: Page, code: number): Promise<void> {
+  const status = code === 1006 ? 429 : 400;
+  const message =
+    code === 1501
+      ? 'AI 洞察数据暂时不可用，请稍后重试'
+      : code === 1006
+        ? 'AI 洞察请求过于频繁，请稍后重试'
+        : 'error';
+  await page.route('**/api/v1/ai/insight/refresh', async (route) => {
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: envelopeErr(code, message),
+    });
+  });
+}

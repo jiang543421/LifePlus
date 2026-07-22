@@ -1,6 +1,6 @@
 # LifePulse
 
-> 个人多用户「数字生活」仪表盘 MVP1 — 邮箱+密码认证、任务 TODO、日历计划事件、首页 6 卡。
+> 个人多用户「数字生活」仪表盘 — 邮箱+密码认证、任务、计划、消费、饮食、首页 6 卡、**AI 分析 v2.0**（feat/ai-v2.0 已落地，未发 tag）。
 
 ## 1. 快速上手
 
@@ -138,6 +138,8 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 | [v1.0.0-mvp](RELEASES/v1.0.0-mvp.md) | 2026-07-15 | MVP1 首个 release：邮箱+密码认证、任务、计划、首页 6 卡 |
 
 > 最新发布：`v1.2.3`（PR #15 squash merge to `main` @ `ccb51dd`）— 含 `GET /api/v1/daily` + `GET /api/v1/daily/week` 两个聚合端点，diet 永久禁用，无 schema 变更。
+>
+> **未发布**：`feat/ai-v2.0` 分支（PR #16-#21，6 个 PR）— AI 分析 v2.0 已合并到该分支但未 squash to `main`，详见 [docs/superpowers/specs/2026-07-21-ai-v2-design.md §18](docs/superpowers/specs/2026-07-21-ai-v2-design.md)。
 
 ## 8. 路线图
 
@@ -145,7 +147,8 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 - MVP2 第一阶段 v1.2.1（✅）：消费 expense
 - MVP2 第二阶段 v1.2.2（✅）：饮食 diet
 - MVP2 第三阶段 v1.2.3（✅ 部分）：日报 daily 后端能力（前端接入留待 v1.2.4）
-- 后续：AI 分析 v2.0、日报前端 v1.2.4、设置页 actions v1.1
+- **AI 分析 v2.0（✅ 已实现，未发 tag）**：5 个 Provider（Task/Plan/Expense/Diet/Daily stub）+ Redis 缓存 30min + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST） + 前端首页 AI 卡激活（抽屉 + Toast）。详见 [2026-07-21-ai-v2-design.md §18](docs/superpowers/specs/2026-07-21-ai-v2-design.md)。
+- 后续：日报前端 v1.2.4、AI v2.1（独立分析页 + 趋势图）、设置页 actions v1.1
 
 ---
 
