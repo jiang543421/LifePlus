@@ -73,4 +73,23 @@ class PlanAiProviderTest {
     void key_returnsPlan() {
         assertThat(provider.key()).isEqualTo("plan");
     }
+
+    @Test
+    void collect_trendAlwaysNone_regardlessOfCount() {
+        // pin 行为：plan provider 无跨日对比信号，trend 永为 NONE（模板自己按 value 渲染 busy/normal/free）
+        when(planMapper.countTodayEvents(anyLong(), any())).thenReturn(10);
+        MetricValue mv = provider.collect(1L, ctx);
+        assertThat(mv.trend()).isEqualTo(Trend.NONE);
+        assertThat(mv.unit()).isEqualTo("项");
+    }
+
+    @Test
+    void collect_crossUser_userIdPropagatedToMapper() {
+        // pin CLAUDE.md §7.2：userId 必须透传给 mapper，禁止从 ctx 推断
+        when(planMapper.countTodayEvents(eq(7L), any())).thenReturn(2);
+
+        provider.collect(7L, ctx);
+
+        Mockito.verify(planMapper).countTodayEvents(eq(7L), eq(ctx.today()));
+    }
 }
