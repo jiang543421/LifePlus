@@ -59,14 +59,24 @@
   </select>
 
   <!--
-    AI 模块专用的本周消费聚合：与 summaryTotal 字段一致，但语义聚焦在 [from, to] 单调窗口。
-    返回类型不带 COALESCE：null 表示无数据；Provider 需自行转 ZERO。
+    AI 模块专用（v2.0.0-ai，HEAD 侧新增）：本周消费聚合，与 summaryTotal 字段一致，
+    但语义聚焦在 [from, to] 单调窗口。返回类型不带 COALESCE：null 表示无数据；
+    Provider 需自行转 ZERO。
   -->
   <select id="sumByUserOccurredBetween" resultType="bigdecimal">
     SELECT SUM(amount) FROM t_expense
     WHERE user_id = #{userId} AND deleted = 0
       AND occurred_at &gt;= #{from}
       AND occurred_at &lt; #{to}
+  </select>
+
+  <!-- 日报聚合（v1.2.3，origin/main 侧新增）：目标日笔数（半开区间 [dayStart, nextDayStart)）。 -->
+  <select id="countByUserOnDay" resultType="long">
+    SELECT COUNT(*) FROM t_expense
+    WHERE user_id = #{userId}
+      AND occurred_at &gt;= #{dayStart}
+      AND occurred_at &lt;  #{nextDayStart}
+      AND deleted = 0
   </select>
 
 </mapper>

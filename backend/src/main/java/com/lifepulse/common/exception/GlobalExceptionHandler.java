@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * 全局异常处理（plan §3 / §6.3；spec §03 §8）。
@@ -62,6 +63,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(MyResponse.error(AuthConstants.ERR_VALIDATION, "malformed request body"));
+    }
+
+    /**
+     * 查询参数 / 路径变量类型转换失败（例如 {@code ?date=not-a-date}）→ 400 / 1001。
+     * 与 {@link #handleUnreadable} 对称：请求体 JSON 无法解析 vs 请求参数无法转换，
+     * 都是"输入格式无法处理"，统一走校验错码。
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<MyResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String name = ex.getName();
+        Object value = ex.getValue();
+        String msg = name + ": invalid value '" + value + "'";
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(MyResponse.error(AuthConstants.ERR_VALIDATION, msg));
     }
 
     @ExceptionHandler(Exception.class)

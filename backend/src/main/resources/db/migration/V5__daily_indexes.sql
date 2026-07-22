@@ -1,0 +1,24 @@
+-- =============================================================
+-- V5 — 日报模块索引审计（no-op）
+-- Spec: docs/prd/05-daily-report.md §3 / docs/specs/08-daily-report-design.md
+-- 引擎：InnoDB；字符集：utf8mb4_0900_ai_ci
+--
+-- 设计变更记录（v1.2.3 实施期发现）：
+-- 1. 原计划为 t_task 加 idx_user_completed_at (user_id, completed_at)，
+--    但 t_task 当前 schema (V2) 没有 completed_at 列。v1.2.3 采用
+--    "status = DONE AND due_date BETWEEN ..." 完成判定语义，
+--    V2 既有的 idx_user_status_due (user_id, status, due_date) 完美覆盖，
+--    本迁移不再加索引。
+-- 2. t_plan V3 已有 idx_user_start (user_id, start_time)，按 start_time
+--    当日范围查询无需新增索引。
+-- 3. t_expense V4 已有 idx_user_occurred (user_id, occurred_at)，
+--    按 occurred_at 当日范围查询无需新增索引。
+-- 4. 若未来引入 completed_at 列（精确完成时间维度），届时新建
+--    V7+ 加 idx_user_completed_at 并在 TaskService.updateStatusByUser
+--    同步设置；本日历由 v1.3+ 评审后处理。
+--
+-- 部署说明：本迁移为 no-op，安全应用。如生产 Flyway 历史已有"V5 加索引"
+-- 期望的 deploy artifact，请直接替换本文件为期望版本号内容（递增版本号）。
+-- =============================================================
+
+SELECT 1; -- no-op marker（Flyway 要求 SQL 文件至少一条语句）
