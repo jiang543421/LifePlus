@@ -3,6 +3,7 @@ package com.lifepulse.auth.service;
 import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.auth.config.JwtProperties;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -23,7 +24,7 @@ import java.util.UUID;
  * 启动时校验密钥字节数 ≥32（CLAUDE.md §7.2 hard rule）。
  *
  * <p>{@link #parse(String)} 在签名错误、过期、解析失败时统一抛
- * {@link BusinessException} {@link AuthConstants#ERR_REFRESH_INVALID}（1401），
+ * {@link BusinessException} {@link ErrorCode#REFRESH_INVALID}（1401），
  * 由 1.3 的 {@code GlobalExceptionHandler} 转统一信封。
  */
 @Service
@@ -91,10 +92,10 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "token expired");
+            throw new BusinessException(ErrorCode.REFRESH_INVALID, "token expired");
         } catch (io.jsonwebtoken.JwtException e) {
             // 签名错误、格式非法、claim 缺失等统一归 1401
-            throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "invalid token");
+            throw new BusinessException(ErrorCode.REFRESH_INVALID, "invalid token");
         }
     }
 
