@@ -13,8 +13,8 @@ package com.lifepulse.common.exception;
  *   <li>{@code 15xx} 服务器内部：兜底错误</li>
  * </ul>
  *
- * <p>{@code AuthConstants.ERR_*} 保留为兼容 shim，等价引用；跨模块（task / plan）
- * 直接用本类即可。
+ * <p>{@code AuthConstants.ERR_*} 保留为历史 shim，等价引用 {@link ErrorCode}。
+ * 跨模块（task / plan）直接用本类即可；新代码禁止引用 shim。
  */
 public final class ErrorCode {
 
