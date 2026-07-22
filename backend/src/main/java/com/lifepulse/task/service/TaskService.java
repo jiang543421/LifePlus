@@ -194,8 +194,8 @@ public class TaskService {
     }
 
     /**
-     * 校验 plan 归属（CLAUDE.md §7.2 跨用户越权硬门 — Phase 3 兜底 Phase 2-B 留的
-     * TODO=plan-cross-user）。{@code planId == null} 表示不关联 plan，跳过校验。
+     * 校验 plan 归属（CLAUDE.md §7.2 跨用户越权硬门）。
+     * {@code planId == null} 表示不关联 plan，跳过校验。
      * 跨用户 / 不存在 / 已软删 → 抛 1003，与 service 其它方法语义一致。
      */
     private void requireOwnedPlan(Long userId, Long planId) {
