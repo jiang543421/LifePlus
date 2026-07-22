@@ -136,7 +136,6 @@ public class DailyReportService {
         return new WeeklyReportPayload(isoWeek, weekStart, weekEnd, comparison);
     }
 
-    // ---- 内部辅助 ----
 
     /**
      * 校验目标日期是否在 {@link DailyConstants#MAX_HISTORY_DAYS} 窗口内。

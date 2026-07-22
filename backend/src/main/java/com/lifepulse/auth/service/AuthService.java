@@ -71,7 +71,6 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
     }
 
-    // ---------- register ----------
 
     @Transactional
     public Long register(RegisterRequest req, String ip) {
@@ -104,7 +103,6 @@ public class AuthService {
         return u.getId();
     }
 
-    // ---------- login ----------
 
     public AuthResponse login(LoginRequest req, String ip) {
         // 1. 查 user；不存在或密码错统一 1002（防账号枚举），
@@ -134,7 +132,6 @@ public class AuthService {
         }
     }
 
-    // ---------- refresh ----------
 
     @Transactional
     public AuthResponse refresh(RefreshRequest req, String ip) {
@@ -186,7 +183,6 @@ public class AuthService {
         return issueAndPersist(userId);
     }
 
-    // ---------- logout ----------
 
     public void logout(LogoutRequest req) {
         String hash = sha256Hex(req.refreshToken());
@@ -198,7 +194,6 @@ public class AuthService {
         refreshTokenMapper.revokeByHash(hash, OffsetDateTime.now());
     }
 
-    // ---------- private helpers ----------
 
     private AuthResponse issueAndPersist(Long userId) {
         String accessToken = jwtService.issueAccess(userId);

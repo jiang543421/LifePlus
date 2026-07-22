@@ -51,7 +51,6 @@ public class ExpenseService {
         this.rateLimiter = rateLimiter;
     }
 
-    // ---------- create ----------
 
     // Create an expense for the current user.
     // Write-side 1006 rate-limit (10 ops/min/user, plan Risk 6).
@@ -70,7 +69,6 @@ public class ExpenseService {
         return ExpenseResponse.from(e);
     }
 
-    // ---------- getById ----------
 
     // Detail lookup; cross-user / missing / soft-deleted all -> 1003.
     public ExpenseResponse getById(long id) {
@@ -83,7 +81,6 @@ public class ExpenseService {
         return ExpenseResponse.from(e);
     }
 
-    // ---------- list ----------
 
     // Paged list with optional category + occurred_at range.
     // Filter params: null = no filter (mapper IS NULL branches).
@@ -98,7 +95,6 @@ public class ExpenseService {
         return PageResponse.of(items, total, f.page(), f.size());
     }
 
-    // ---------- update ----------
 
     // Partial update: null fields skipped. Cross-user / missing -> 1003.
     // Write-side 1006 rate-limit.
@@ -121,7 +117,6 @@ public class ExpenseService {
         log.debug("expense updated uid={} id={}", userId, id);
     }
 
-    // ---------- softDelete ----------
 
     // Soft delete (BaseMapper.deleteById flips deleted=1 via @TableLogic).
     public void softDelete(long id) {
@@ -137,7 +132,6 @@ public class ExpenseService {
         log.debug("expense deleted uid={} id={}", userId, id);
     }
 
-    // ---------- summary ----------
 
     // Monthly summary for current user.
     // Returns per-category amount (zero-filled for absent categories) + total.
@@ -159,7 +153,6 @@ public class ExpenseService {
         );
     }
 
-    // ---------- categories ----------
 
     // Static metadata listing for UI dropdowns / labels (spec §5 GET /expenses/categories).
     // No user-specific data; order matches ExpenseCategory declaration.
@@ -169,7 +162,6 @@ public class ExpenseService {
                 .toList();
     }
 
-    // ---------- private helpers ----------
 
     // Read current userId; defensive 1002 if filter chain missed.
     private Long requireUserId() {

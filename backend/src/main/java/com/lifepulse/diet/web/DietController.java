@@ -58,7 +58,6 @@ public class DietController {
         this.service = service;
     }
 
-    // ---------- list ----------
 
     @GetMapping
     public MyResponse<DietPageResponse> list(
@@ -75,14 +74,12 @@ public class DietController {
         return MyResponse.ok(service.list(filter));
     }
 
-    // ---------- get ----------
 
     @GetMapping("/{id}")
     public MyResponse<DietResponse> get(@PathVariable long id) {
         return MyResponse.ok(service.getById(id));
     }
 
-    // ---------- create ----------
 
     @PostMapping
     public ResponseEntity<MyResponse<DietResponse>> create(@Valid @RequestBody CreateDietRequest req) {
@@ -90,7 +87,6 @@ public class DietController {
         return ResponseEntity.status(HttpStatus.CREATED).body(MyResponse.ok(created));
     }
 
-    // ---------- update (PATCH: all fields nullable) ----------
 
     @PatchMapping("/{id}")
     public MyResponse<Void> update(@PathVariable long id,
@@ -99,7 +95,6 @@ public class DietController {
         return MyResponse.ok(null);
     }
 
-    // ---------- delete ----------
 
     @DeleteMapping("/{id}")
     public MyResponse<Void> delete(@PathVariable long id) {
@@ -107,7 +102,6 @@ public class DietController {
         return MyResponse.ok(null);
     }
 
-    // ---------- summary ----------
 
     @GetMapping("/summary")
     public MyResponse<DietSummary> summary(@RequestParam(required = false)
@@ -119,7 +113,6 @@ public class DietController {
         return MyResponse.ok(service.summary(date));
     }
 
-    // ---------- frequent ----------
 
     @GetMapping("/frequent")
     public MyResponse<List<DietFrequentItem>> frequent(
@@ -131,7 +124,6 @@ public class DietController {
         return MyResponse.ok(service.frequent(from, to, limit));
     }
 
-    // ---------- private helpers ----------
 
     private static void validatePage(int page, int size) {
         if (page < 1) {

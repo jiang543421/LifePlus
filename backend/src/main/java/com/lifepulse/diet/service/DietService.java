@@ -49,7 +49,6 @@ public class DietService {
         this.rateLimiter = rateLimiter;
     }
 
-    // ---------- create ----------
 
     /**
      * 新增一笔饮食；写端点 1006 限流（10/min/user）。
@@ -83,7 +82,6 @@ public class DietService {
         return DietResponse.from(d);
     }
 
-    // ---------- getById ----------
 
     /**
      * 详情查询；跨用户 / 不存在 / 已软删 → 1003。
@@ -98,7 +96,6 @@ public class DietService {
         return DietResponse.from(d);
     }
 
-    // ---------- list ----------
 
     /**
      * 过滤 + 分页列表。
@@ -115,7 +112,6 @@ public class DietService {
         return DietPageResponse.of(items, total, f.page(), f.size());
     }
 
-    // ---------- update ----------
 
     /**
      * 修改已有饮食；null-skip 语义；写端点 1006 限流。
@@ -154,7 +150,6 @@ public class DietService {
         log.debug("diet updated uid={} id={}", userId, id);
     }
 
-    // ---------- softDelete ----------
 
     /**
      * 软删（{@code BaseMapper.deleteById} 由 {@code @TableLogic} 翻 {@code deleted=1}）。
@@ -172,7 +167,6 @@ public class DietService {
         log.debug("diet deleted uid={} id={}", userId, id);
     }
 
-    // ---------- summary ----------
 
     /**
      * 当日营养汇总 + vs 昨日 / vs 上周同日 kcal 差值。
@@ -217,7 +211,6 @@ public class DietService {
         return d.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC).minusNanos(1);
     }
 
-    // ---------- frequent ----------
 
     /**
      * 高频名称聚合（录入弹窗「一键复用」数据源）。
@@ -246,7 +239,6 @@ public class DietService {
                 .toList();
     }
 
-    // ---------- private helpers ----------
 
     private Long requireUserId() {
         Long userId = UserContext.current();

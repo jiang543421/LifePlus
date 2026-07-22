@@ -58,7 +58,6 @@ public class TaskController {
         this.service = service;
     }
 
-    // ---------- list ----------
 
     @GetMapping
     public MyResponse<PageResponse<TaskListItem>> list(
@@ -78,21 +77,18 @@ public class TaskController {
         return MyResponse.ok(service.pageByUser(filter));
     }
 
-    // ---------- byPlan ----------
 
     @GetMapping("/by-plan/{planId}")
     public MyResponse<List<TaskListItem>> byPlan(@PathVariable long planId) {
         return MyResponse.ok(service.listByPlan(planId));
     }
 
-    // ---------- get ----------
 
     @GetMapping("/{id}")
     public MyResponse<TaskResponse> get(@PathVariable long id) {
         return MyResponse.ok(service.getById(id));
     }
 
-    // ---------- create ----------
 
     @PostMapping
     public ResponseEntity<MyResponse<TaskResponse>> create(@Valid @RequestBody TaskCreateRequest req) {
@@ -100,7 +96,6 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED).body(MyResponse.ok(created));
     }
 
-    // ---------- update ----------
 
     @PutMapping("/{id}")
     public MyResponse<Void> update(@PathVariable long id,
@@ -109,7 +104,6 @@ public class TaskController {
         return MyResponse.ok(null);
     }
 
-    // ---------- patchStatus ----------
 
     @PatchMapping("/{id}/status")
     public MyResponse<Void> patchStatus(@PathVariable long id,
@@ -118,7 +112,6 @@ public class TaskController {
         return MyResponse.ok(null);
     }
 
-    // ---------- delete ----------
 
     @DeleteMapping("/{id}")
     public MyResponse<Void> delete(@PathVariable long id) {
@@ -126,7 +119,6 @@ public class TaskController {
         return MyResponse.ok(null);
     }
 
-    // ---------- private helpers ----------
 
     private static void validatePage(int page, int size) {
         if (page < 1) {
