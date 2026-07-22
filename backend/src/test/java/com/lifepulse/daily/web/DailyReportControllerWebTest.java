@@ -41,6 +41,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -264,6 +265,48 @@ class DailyReportControllerWebTest {
                         .value(org.hamcrest.Matchers.containsString("missing authenticated user")));
 
         verify(service, never()).daily(anyLong(), any(LocalDate.class));
+    }
+
+    /**
+     * Pin 跨用户隔离：控制器必须把当前线程 UserContext 的 userId 传给 service，
+     * 不接受任何 query / path 参数覆盖。CLAUDE.md §7.2 硬约束。
+     *
+     * <p>做法：以 userA (id=100) 的 token 请求 → service.daily 必须收到 userId=100；
+     * 然后以 userB (id=200) 的 token 请求 → service.daily 必须收到 userId=200。
+     * 若未来有人新增 {@code ?userId=} query param 或 path variable 试图覆盖，
+     * ArgumentCaptor 立刻 fail，强制走 review。
+     */
+    @Test
+    @DisplayName("跨用户隔离：userA → service 收到 userA；userB → service 收到 userB（pin CLAUDE.md §7.2）")
+    void daily_crossUser_userContextThreadedCorrectly() throws Exception {
+        long userA = 100L;
+        long userB = 200L;
+        DailyReportPayload payloadA = mkPayload(FIXED_TODAY);
+        DailyReportPayload payloadB = mkPayload(FIXED_TODAY.minusDays(1));
+        when(service.daily(userA, FIXED_TODAY)).thenReturn(payloadA);
+        when(service.daily(userB, FIXED_TODAY)).thenReturn(payloadB);
+
+        // userA 请求
+        UserContext.set(userA);
+        UsernamePasswordAuthenticationToken tokenA = new UsernamePasswordAuthenticationToken(
+                userA, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        mvc.perform(get("/api/v1/daily").with(authentication(tokenA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.date").value("2026-07-21"));
+
+        // userB 请求
+        UserContext.set(userB);
+        UsernamePasswordAuthenticationToken tokenB = new UsernamePasswordAuthenticationToken(
+                userB, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        mvc.perform(get("/api/v1/daily").with(authentication(tokenB)))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Long> uidCap = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<LocalDate> dateCap = ArgumentCaptor.forClass(LocalDate.class);
+        verify(service, Mockito.times(2)).daily(uidCap.capture(), dateCap.capture());
+        // 顺序：先 userA 再 userB（与请求顺序一致）
+        assertThat(uidCap.getAllValues()).containsExactly(userA, userB);
+        assertThat(dateCap.getAllValues()).containsExactly(FIXED_TODAY, FIXED_TODAY);
     }
 
     // ---------- helpers ----
