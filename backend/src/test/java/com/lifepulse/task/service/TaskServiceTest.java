@@ -368,6 +368,35 @@ class TaskServiceTest {
         verify(mapper).listByPlan(7L, 100L);
     }
 
+    /**
+     * Pin listByPlan 对「不属于当前用户的 planId」静默返空列表而非抛 1003。
+     *
+     * <p>Phase 3 / CLAUDE.md §7.2 已知 gap：{@code mapper.listByPlan(userId, planId)}
+     * 已按 user_id 隔离，跨用户 planId 直接得空列表；但 service 未再校验 plan 是否真
+     * 属于当前用户。从安全角度看，**没有信息泄漏**（永远拿不到别人的任务），但语义
+     * 上与其他端点（{@code getById} / {@code softDelete} 抛 1003）不一致——前端无
+     * 法区分「plan 不存在」与「plan 存在但属于别人」。
+     *
+     * <p>该测试用 @Disabled 保留为 Phase 3+ 待办：当硬化为「先 planMapper.findByUser
+     * 再列表」时，移除 @Disabled 并加 planMapper 的 mock 行为即可。
+     *
+     * <p>Refs: Phase 3 plan 评审 TODO；后续若新增 plan 所有权校验，该测试转为
+     * {@code assertThatThrownBy(...).isInstanceOf(BusinessException.class).extracting("code").isEqualTo(1003)}。
+     */
+    @Test
+    @org.junit.jupiter.api.Disabled("Phase 3 TODO：硬化为 plan 所有权校验后启用；当前行为：跨用户 planId 静默空列表")
+    void listByPlan_otherUsersPlan_silentlyReturnsEmpty_pinGap() {
+        UserContext.set(7L);
+        // 模拟 planId=999 属于用户 999：mapper.listByPlan(7L, 999L) 因 user_id 不匹配返空
+        when(mapper.listByPlan(7L, 999L)).thenReturn(List.of());
+
+        List<TaskListItem> items = service.listByPlan(999L);
+
+        assertThat(items).isEmpty();
+        verify(mapper).listByPlan(7L, 999L);
+        // 未来硬化后应改为：assertThatThrownBy(...) -> BusinessException(CROSS_USER=1003)
+    }
+
     // ---------- pageByUser ----------
 
     @Test
