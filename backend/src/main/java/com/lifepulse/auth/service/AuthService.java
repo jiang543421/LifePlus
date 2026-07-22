@@ -12,6 +12,7 @@ import com.lifepulse.auth.entity.User;
 import com.lifepulse.auth.repository.RefreshTokenMapper;
 import com.lifepulse.auth.repository.UserMapper;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.security.RateLimiter;
 import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ import java.util.HexFormat;
  * {@link SecureRandom} 生成 32 字节 → Base64 URL-safe → 给客户端，DB 存 SHA-256(raw)。
  *
  * <p>登录/注册前先调 {@link RateLimiter#hit}；超限抛 {@link BusinessException}
- * {@link AuthConstants#ERR_LOGIN_RATE_LIMIT}（1006）。
+ * {@link ErrorCode#LOGIN_RATE_LIMIT}（1006）。
  */
 @Service
 public class AuthService {
@@ -77,12 +78,12 @@ public class AuthService {
         // 1. 注册限流（IP 维度，spec §03）
         String rlKey = AuthConstants.REGISTER_RL_KEY_PREFIX + ip;
         if (rateLimiter.hit(rlKey, AuthConstants.REGISTER_RL_MAX, AuthConstants.REGISTER_RL_WINDOW)) {
-            throw new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "register rate limit exceeded");
+            throw new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "register rate limit exceeded");
         }
 
         // 2. email 唯一性（前置检查）
         if (userMapper.findByEmail(req.email()) != null) {
-            throw new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email already registered");
+            throw new BusinessException(ErrorCode.EMAIL_TAKEN, "email already registered");
         }
 
         // 3. 持久化。Review H-1：前置检查与 insert 之间存在并发窗口，
@@ -96,7 +97,7 @@ public class AuthService {
             userMapper.insert(u);
         } catch (DataIntegrityViolationException e) {
             // DB 唯一索引兜底：与前置检查语义保持一致
-            throw new BusinessException(AuthConstants.ERR_EMAIL_TAKEN, "email already registered");
+            throw new BusinessException(ErrorCode.EMAIL_TAKEN, "email already registered");
         }
 
         // 4. 返回新用户 id
@@ -112,11 +113,11 @@ public class AuthService {
         User u = userMapper.findByEmail(req.email());
         if (u == null) {
             checkRateLimit(rlKey);
-            throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "invalid credentials");
+            throw new BusinessException(ErrorCode.BAD_CREDENTIALS, "invalid credentials");
         }
         if (!passwordEncoder.matches(req.password(), u.getPasswordHash())) {
             checkRateLimit(rlKey);
-            throw new BusinessException(AuthConstants.ERR_BAD_CREDENTIALS, "invalid credentials");
+            throw new BusinessException(ErrorCode.BAD_CREDENTIALS, "invalid credentials");
         }
 
         // 2. 签发 JWT 对并持久化 refresh（成功不计数）
@@ -129,7 +130,7 @@ public class AuthService {
      */
     private void checkRateLimit(String rlKey) {
         if (rateLimiter.hit(rlKey, AuthConstants.LOGIN_RL_MAX, AuthConstants.LOGIN_RL_WINDOW)) {
-            throw new BusinessException(AuthConstants.ERR_LOGIN_RATE_LIMIT, "login rate limit exceeded");
+            throw new BusinessException(ErrorCode.LOGIN_RATE_LIMIT, "login rate limit exceeded");
         }
     }
 
@@ -152,7 +153,7 @@ public class AuthService {
         String typ = claims.get(CLAIM_TYP, String.class);
         if (!JwtService.TYP_REFRESH.equals(typ)) {
             log.warn("refresh replay: wrong typ claim, got={}", typ);
-            throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "not a refresh token");
+            throw new BusinessException(ErrorCode.REFRESH_INVALID, "not a refresh token");
         }
 
         Long userId = Long.valueOf(claims.getSubject());
@@ -164,20 +165,20 @@ public class AuthService {
             // 重放核心场景：旧 token 用过一次或被撤销后又拿来换新 token。
             // 仅记 hash 前缀（SHA-256 前 8 hex），避免完整 hash 落入日志。
             log.warn("refresh replay: token not found or revoked, hashPrefix={}", oldHash.substring(0, 8));
-            throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "refresh revoked or unknown");
+            throw new BusinessException(ErrorCode.REFRESH_INVALID, "refresh revoked or unknown");
         }
 
         // 4. 跨用户校验（CLAUDE.md §7.2 hard rule）
         if (!stored.getUserId().equals(userId)) {
             log.warn("refresh cross-user detected: tokenUserId={}, storedUserId={}", userId, stored.getUserId());
-            throw new BusinessException(AuthConstants.ERR_CROSS_USER, "cross-user access");
+            throw new BusinessException(ErrorCode.CROSS_USER, "cross-user access");
         }
 
         // 5. 过期校验
         if (stored.getExpiresAt().isBefore(OffsetDateTime.now())) {
             log.warn("refresh replay: expired, userId={}, hashPrefix={}",
                     stored.getUserId(), oldHash.substring(0, 8));
-            throw new BusinessException(AuthConstants.ERR_REFRESH_INVALID, "refresh expired");
+            throw new BusinessException(ErrorCode.REFRESH_INVALID, "refresh expired");
         }
 
         // 6. 旋转：撤销旧行 → 签发新对 → 持久化新行
