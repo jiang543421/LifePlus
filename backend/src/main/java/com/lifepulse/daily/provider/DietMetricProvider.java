@@ -43,8 +43,7 @@ public class DietMetricProvider implements MetricProvider<DietMetrics> {
             "diet module not enabled in v1.2.3; scheduled for v1.2.4+";
 
     public DietMetricProvider() {
-        // 冻结期无依赖；v1.2.4+ 解冻时改为:
-        //   public DietMetricProvider(DietMapper dietMapper) { this.dietMapper = dietMapper; }
+        // 冻结期无依赖；解冻饮食指标时按正常变更引入 DietMapper 注入
     }
 
     @Override
