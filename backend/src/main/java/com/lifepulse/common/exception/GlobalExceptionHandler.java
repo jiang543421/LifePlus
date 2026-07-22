@@ -28,6 +28,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  *   1004 → 404 (资源不存在)
  *   1005 → 409 (冲突)
  *   1006 → 429 (限流)
+ *   1501 → 503 (AI 降级；spec ai-v2-design.md §6.4)
  *   其他 → 500
  * </pre>
  */
@@ -98,6 +99,7 @@ public class GlobalExceptionHandler {
             case AuthConstants.ERR_NOT_FOUND -> HttpStatus.NOT_FOUND;              // 1004 → 404
             case AuthConstants.ERR_EMAIL_TAKEN -> HttpStatus.CONFLICT;              // 1005 → 409
             case AuthConstants.ERR_LOGIN_RATE_LIMIT -> HttpStatus.TOO_MANY_REQUESTS;// 1006 → 429
+            case ErrorCode.AI_DEGRADED -> HttpStatus.SERVICE_UNAVAILABLE;          // 1501 → 503
             default -> HttpStatus.INTERNAL_SERVER_ERROR;                           // 其他 → 500
         };
     }
