@@ -18,4 +18,12 @@ public record ExpenseSummaryResponse(
         Map<String, BigDecimal> amountByCategory,
         BigDecimal totalAmount
 ) {
+    /**
+     * Compact 构造：CLAUDE.md §4.1 不可变性 hard rule —— record 暴露给前端的 Map 字段
+     * 必须脱离生产端的可变 {@code LinkedHashMap} 引用，防止 caller 持有引用后绕过 service
+     * 写入。{@code Map.copyOf} 同时禁止 null 元素与 null value，避免前端拿到 NPE。
+     */
+    public ExpenseSummaryResponse {
+        amountByCategory = Map.copyOf(amountByCategory);
+    }
 }
