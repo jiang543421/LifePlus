@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.URL;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
 /**
@@ -25,7 +24,6 @@ import org.springframework.validation.annotation.Validated;
  * <p>字段名（含 kebab-case 绑定映射）与 spec §10.3 / Task 1 brief 完全一致；
  * 后续 Task 2-4（{@code LlmClient} / DeepSeek / Ollama）直接注入本 bean。
  */
-@Component
 @ConfigurationProperties("lp.ai.llm")
 @Validated
 public record LlmProperties(
