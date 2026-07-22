@@ -1,6 +1,5 @@
 package com.lifepulse.common.exception;
 
-import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.common.web.MyResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,14 +55,14 @@ public class GlobalExceptionHandler {
                 .orElse("validation failed");
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(MyResponse.error(AuthConstants.ERR_VALIDATION, msg));
+                .body(MyResponse.error(ErrorCode.VALIDATION, msg));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<MyResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(MyResponse.error(AuthConstants.ERR_VALIDATION, "malformed request body"));
+                .body(MyResponse.error(ErrorCode.VALIDATION, "malformed request body"));
     }
 
     /**
@@ -78,7 +77,7 @@ public class GlobalExceptionHandler {
         String msg = name + ": invalid value '" + value + "'";
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(MyResponse.error(AuthConstants.ERR_VALIDATION, msg));
+                .body(MyResponse.error(ErrorCode.VALIDATION, msg));
     }
 
     @ExceptionHandler(Exception.class)
@@ -92,13 +91,13 @@ public class GlobalExceptionHandler {
     /** 错误码 → HTTP 状态映射（plan §5）。 */
     static HttpStatus mapStatus(int code) {
         return switch (code) {
-            case AuthConstants.ERR_VALIDATION -> HttpStatus.BAD_REQUEST;          // 1001 → 400
-            case AuthConstants.ERR_BAD_CREDENTIALS,
-                 AuthConstants.ERR_REFRESH_INVALID -> HttpStatus.UNAUTHORIZED;      // 1002 / 1401 → 401
-            case AuthConstants.ERR_CROSS_USER -> HttpStatus.FORBIDDEN;              // 1003 → 403
-            case AuthConstants.ERR_NOT_FOUND -> HttpStatus.NOT_FOUND;              // 1004 → 404
-            case AuthConstants.ERR_EMAIL_TAKEN -> HttpStatus.CONFLICT;              // 1005 → 409
-            case AuthConstants.ERR_LOGIN_RATE_LIMIT -> HttpStatus.TOO_MANY_REQUESTS;// 1006 → 429
+            case ErrorCode.VALIDATION -> HttpStatus.BAD_REQUEST;                   // 1001 → 400
+            case ErrorCode.BAD_CREDENTIALS,
+                 ErrorCode.REFRESH_INVALID -> HttpStatus.UNAUTHORIZED;             // 1002 / 1401 → 401
+            case ErrorCode.CROSS_USER -> HttpStatus.FORBIDDEN;                     // 1003 → 403
+            case ErrorCode.NOT_FOUND -> HttpStatus.NOT_FOUND;                      // 1004 → 404
+            case ErrorCode.EMAIL_TAKEN -> HttpStatus.CONFLICT;                      // 1005 → 409
+            case ErrorCode.LOGIN_RATE_LIMIT -> HttpStatus.TOO_MANY_REQUESTS;        // 1006 → 429
             case ErrorCode.AI_DEGRADED -> HttpStatus.SERVICE_UNAVAILABLE;          // 1501 → 503
             default -> HttpStatus.INTERNAL_SERVER_ERROR;                           // 其他 → 500
         };

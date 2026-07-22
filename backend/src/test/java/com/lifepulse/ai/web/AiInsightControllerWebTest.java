@@ -5,8 +5,8 @@ import com.lifepulse.ai.model.Trend;
 import com.lifepulse.ai.service.AiInsightService;
 import com.lifepulse.ai.web.dto.AiChipDto;
 import com.lifepulse.ai.web.dto.AiInsightResponse;
-import com.lifepulse.auth.AuthConstants;
 import com.lifepulse.common.exception.BusinessException;
+import com.lifepulse.common.exception.ErrorCode;
 import com.lifepulse.common.exception.GlobalExceptionHandler;
 import com.lifepulse.common.security.RateLimiter;
 import com.lifepulse.security.JwtAuthEntryPoint;
@@ -142,7 +142,7 @@ class AiInsightControllerWebTest {
     void today_noToken_returns401WithCode1002() throws Exception {
         mvc.perform(get("/api/v1/ai/insight/today"))
             .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+            .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(aiInsightService, never()).getInsight(anyLong());
         verify(rateLimiter, never()).hit(anyString(), anyInt(), Mockito.any());
@@ -154,21 +154,21 @@ class AiInsightControllerWebTest {
 
         mvc.perform(get("/api/v1/ai/insight/today").with(authentication(authToken())))
             .andExpect(status().isTooManyRequests())
-            .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT))
+            .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT))
             .andExpect(jsonPath("$.message").value("AI 洞察请求过于频繁，请稍后重试"));
 
         verify(aiInsightService, never()).getInsight(anyLong());
     }
 
     @Test
-    void today_serviceDegraded_returns500WithCode1501() throws Exception {
+    void today_serviceDegraded_returns503WithCode1501() throws Exception {
         when(rateLimiter.hit(anyString(), anyInt(), Mockito.any())).thenReturn(false);
         when(aiInsightService.getInsight(USER_ID))
             .thenThrow(new BusinessException(ErrorCodeFixtures.AI_DEGRADED,
                 "AI 洞察数据暂时不可用，请稍后重试"));
 
         mvc.perform(get("/api/v1/ai/insight/today").with(authentication(authToken())))
-            .andExpect(status().isInternalServerError())
+            .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.code").value(ErrorCodeFixtures.AI_DEGRADED));
     }
 
@@ -194,7 +194,7 @@ class AiInsightControllerWebTest {
     void refresh_noToken_returns401WithCode1002() throws Exception {
         mvc.perform(post("/api/v1/ai/insight/refresh"))
             .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.code").value(AuthConstants.ERR_BAD_CREDENTIALS));
+            .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
 
         verify(aiInsightService, never()).refreshInsight(anyLong());
     }
@@ -205,20 +205,20 @@ class AiInsightControllerWebTest {
 
         mvc.perform(post("/api/v1/ai/insight/refresh").with(authentication(authToken())))
             .andExpect(status().isTooManyRequests())
-            .andExpect(jsonPath("$.code").value(AuthConstants.ERR_LOGIN_RATE_LIMIT));
+            .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT));
 
         verify(aiInsightService, never()).refreshInsight(anyLong());
     }
 
     @Test
-    void refresh_serviceDegraded_returns500WithCode1501() throws Exception {
+    void refresh_serviceDegraded_returns503WithCode1501() throws Exception {
         when(rateLimiter.hit(anyString(), anyInt(), Mockito.any())).thenReturn(false);
         when(aiInsightService.refreshInsight(USER_ID))
             .thenThrow(new BusinessException(ErrorCodeFixtures.AI_DEGRADED,
                 "AI 洞察数据暂时不可用，请稍后重试"));
 
         mvc.perform(post("/api/v1/ai/insight/refresh").with(authentication(authToken())))
-            .andExpect(status().isInternalServerError())
+            .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.code").value(ErrorCodeFixtures.AI_DEGRADED));
     }
 
