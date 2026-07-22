@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -189,6 +190,47 @@ class UserServiceTest {
 
         verify(userMapper, never()).selectById(anyLong());
         verify(passwordEncoder, never()).matches(anyString(), anyString());
+    }
+
+    /**
+     * Pin 改密后 access token 不会主动失效（无 JWT deny-list）。
+     *
+     * <p>CLAUDE.md §7.2 + Review HIGH-2 决策记录：MVP1 暂不引入 JWT deny-list，
+     * 改密 / 注销后旧 access token 最长额外有效 15min（{@code lp.jwt.access-ttl: PT15M}），
+     * 靠 refresh 旋转（7d TTL）+ 前端改密成功立即 {@code auth.clear()} 兜底。
+     * Trade-off：盗用风险窗口 ≤15min vs. 维护成本（Redis SADD/EXPIRE +
+     * JwtAuthFilter 每次请求一次 GET）。
+     *
+     * <p>该测试用 {@code verifyNoMoreInteractions} 锁定当前 4 个 mock 的精确调用集合；
+     * 若后续实现 deny-list（例如新增 {@code JwtDenylistService} 注入 {@code UserService}），
+     * 此测试必失败，强迫开发者同时更新测试与 migration 计划（Review HIGH-2 姊妹条目）。
+     */
+    @Test
+    void changePassword_doesNotInvalidateAccessToken_noDenyListInMVP1() {
+        User u = userWithId(7L, "alice@lifepulse.test", "Alice", "hash-old");
+        when(userMapper.selectById(7L)).thenReturn(u);
+        when(passwordEncoder.matches("oldPass1", "hash-old")).thenReturn(true);
+        when(passwordEncoder.encode("newPass2")).thenReturn("hash-new");
+        when(refreshTokenMapper.revokeAllByUserId(anyLong(), any(OffsetDateTime.class))).thenReturn(2);
+
+        service.changePassword(7L, "oldPass1", "newPass2");
+
+        // 改密成功后 4 个 mock 的精确调用集合（pin MVP1 无 deny-list）：
+        //   - rateLimiter.hit  1 次（checkRateLimit）
+        //   - userMapper.selectById  1 次（loadActiveUser）
+        //   - passwordEncoder.matches  1 次（旧密码校验）
+        //   - passwordEncoder.encode  1 次（新密码 BCrypt）
+        //   - userMapper.updateById  1 次（写新 hash）
+        //   - refreshTokenMapper.revokeAllByUserId  1 次（撤销所有 refresh）
+        // 若新增 deny-list（如 JwtDenylistService.revoke(jti)），以下断言失败。
+        verify(rateLimiter).hit(eq(AuthConstants.PASSWORD_RL_KEY_PREFIX + 7L),
+                eq(AuthConstants.PASSWORD_RL_MAX), eq(AuthConstants.PASSWORD_RL_WINDOW));
+        verify(userMapper).selectById(7L);
+        verify(passwordEncoder).matches("oldPass1", "hash-old");
+        verify(passwordEncoder).encode("newPass2");
+        verify(userMapper).updateById(any(User.class));
+        verify(refreshTokenMapper).revokeAllByUserId(eq(7L), any(OffsetDateTime.class));
+        verifyNoMoreInteractions(rateLimiter, userMapper, passwordEncoder, refreshTokenMapper);
     }
 
     // ---------- deleteAccount ----------
