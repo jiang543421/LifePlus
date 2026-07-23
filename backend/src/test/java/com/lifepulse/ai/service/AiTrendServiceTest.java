@@ -84,6 +84,28 @@ class AiTrendServiceTest {
                 .isBefore(resp.series().get("task").points().get(13).date());
     }
 
+    /**
+     * Case 3：7 天与 30 天窗口 — 验证 mapper 调用次数 + from/to 计算。
+     * 30 天贴 MAX_HISTORY_DAYS 上限，应允许通过。
+     */
+    @ParameterizedTest
+    @ValueSource(ints = {7, 30})
+    void range_windowBoundaries_callsDailyCorrectTimes(int windowDays) {
+        LocalDate today = LocalDate.of(2026, 7, 23);
+        when(dailyReportService.today()).thenReturn(today);
+        when(dailyReportService.daily(anyLong(), any()))
+                .thenReturn(stubPayload(0.5, 2L, new BigDecimal("50.00")));
+
+        var resp = service.range(1L, windowDays);
+
+        verify(dailyReportService, times(windowDays)).daily(eq(1L), any());
+        assertThat(resp.from()).isEqualTo(today.minusDays(windowDays - 1L));
+        assertThat(resp.to()).isEqualTo(today);
+        assertThat(resp.window()).isEqualTo(windowDays);
+        assertThat(resp.series().get("task").points().get(0).date()).isEqualTo(resp.from());
+        assertThat(resp.series().get("task").points().get(windowDays - 1).date()).isEqualTo(resp.to());
+    }
+
     /** 构造固定指标的 payload（mapper 调用 stub 用）。 */
     private static DailyReportPayload stubPayload(double completionRate,
                                                   long eventCount,
