@@ -19,10 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * AI 洞察端点（spec §6.2 / §7.4）。
  *
- * <p>两个端点：
+ * <p>三个端点：
  * <ul>
- *   <li>{@code GET  /api/v1/ai/insight/today}    — 拉取今日洞察，缓存优先（30 min TTL）</li>
+ *   <li>{@code GET  /api/v1/ai/insight/today}    — 首页智能卡取数，缓存优先（30 min / v2.1 6h TTL）</li>
  *   <li>{@code POST /api/v1/ai/insight/refresh}  — 强制刷新，跳缓存写新值（覆写同 key）</li>
+ *   <li>{@code GET  /api/v1/ai/insight/analysis} — v2.1 PR3 独立分析页入口，共享同缓存（同 key 复用）</li>
  * </ul>
  *
  * <p>鉴权：{@link AuthenticationPrincipal} 拿 {@code userId}（{@code JwtAuthFilter}
@@ -31,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>限流：
  * <ul>
  *   <li>GET 60 次/分钟（{@link AiConstants#INSIGHT_GET_RL_MAX}）</li>
- *   <li>POST 6 次/分钟（{@link AiConstants#INSIGHT_REFRESH_RL_MAX}）</li>
+ *   <li>POST 3 次/分钟（{@link AiConstants#INSIGHT_REFRESH_RL_MAX}，v2.1 由 6/min 收紧）</li>
  *   <li>key 形式 {@code lp:rl:ai:insight:<userId>}，按用户维度</li>
  *   <li>超限返回 {@link ErrorCode#LOGIN_RATE_LIMIT}（1006，HTTP 429）</li>
  * </ul>
@@ -74,6 +75,21 @@ public class AiInsightController {
         return MyResponse.ok(withFreshness(r));
     }
 
+    /**
+     * v2.1 PR3：独立分析页入口。与 {@link #today(Long)} 共享同一缓存 key 与降级链，
+     * 限流同源（{@link AiConstants#INSIGHT_GET_RL_MAX}，30/min/user）。
+     *
+     * <p>区别仅在调用方语义：首页卡片只需精简展示，独立页要拿到完整 LLM 元信息
+     * （{@code source / advice / highlight / mood / llmMeta}），且无副作用（不刷新缓存）。
+     */
+    @GetMapping("/analysis")
+    public MyResponse<AiInsightResponse> analysis(@AuthenticationPrincipal Long userId) {
+        requireUserId(userId);
+        enforceRateLimit(userId, AiConstants.INSIGHT_GET_RL_MAX, AiConstants.INSIGHT_GET_RL_WINDOW);
+        AiInsightResponse r = service.getInsight(userId);
+        return MyResponse.ok(withFreshness(r));
+    }
+
     // ===== 私有辅助 =====
 
     /**
@@ -102,13 +118,23 @@ public class AiInsightController {
     /**
      * 现算 freshnessSeconds 替换缓存中固定为 0 的占位，避免读到"始终新鲜"的旧响应。
      * 返回新 record（CLAUDE.md §4.1 不可变性原则）。
+     *
+     * <p>v2.1：必须透传 {@code source} / {@code advice} / {@code highlight} /
+     * {@code mood} / {@code llmMeta}。如使用 4-arg v2.0 兼容构造器，上述 5 字段
+     * 全部置为 null，{@code @JsonInclude(NON_NULL)} 会从响应 JSON 中删除，
+     * 前端拿不到 {@code source="llm"/"template"} 标签（spec §7.3 / CLAUDE.md §11.3）。
      */
     private static AiInsightResponse withFreshness(AiInsightResponse r) {
         return new AiInsightResponse(
             r.headline(),
             r.chips(),
             r.generatedAt(),
-            AiInsightService.freshnessSeconds(r)
+            AiInsightService.freshnessSeconds(r),
+            r.source(),
+            r.advice(),
+            r.highlight(),
+            r.mood(),
+            r.llmMeta()
         );
     }
 }

@@ -54,4 +54,16 @@ public final class ErrorCode {
 
     /** 1501：AI 洞察全部 provider 失败（spec §4.3）。 */
     public static final int AI_DEGRADED = 1501;
+
+    /** 1510：LLM 每日配额超限（spec §6.3）。Service 内部 catch 走 L2 模板，不直接返用户。 */
+    public static final int LLM_QUOTA_EXCEEDED = 1510;
+
+    /** 1511：LLM 熔断中（spec §6.4）。Service 内部 catch 走 L2 模板，不直接返用户。 */
+    public static final int LLM_CIRCUIT_OPEN = 1511;
+
+    /** 1512：LLM 响应解析失败（spec §5.6）。Service 内部 catch 走 L2 模板，不直接返用户。 */
+    public static final int LLM_RESPONSE_INVALID = 1512;
+
+    /** 1513：LLM 不可用（5xx/429/超时/网络错误）。Service 内部 catch 走 L2 模板。 */
+    public static final int LLM_UNAVAILABLE = 1513;
 }

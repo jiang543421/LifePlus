@@ -1,6 +1,8 @@
 package com.lifepulse.ai.web;
 
 import com.lifepulse.ai.AiConstants;
+import com.lifepulse.ai.llm.LlmMeta;
+import com.lifepulse.ai.llm.Mood;
 import com.lifepulse.ai.model.Trend;
 import com.lifepulse.ai.service.AiInsightService;
 import com.lifepulse.ai.web.dto.AiChipDto;
@@ -115,6 +117,27 @@ class AiInsightControllerWebTest {
             Instant.now(), 0L);
     }
 
+    /** v2.1 LLM 命中态：source/advice/highlight/mood/llmMeta 全有。 */
+    private static AiInsightResponse sampleLlmResponse() {
+        AiChipDto taskChip = new AiChipDto(AiConstants.CHIP_TASK_COMPLETION, "任务完成",
+            "80", "%", Trend.FLAT, "与昨日持平");
+        AiChipDto expenseChip = new AiChipDto(AiConstants.CHIP_WEEKLY_EXPENSE, "本周消费",
+            "¥420", "¥", Trend.FLAT, "与上周持平");
+        AiChipDto planChip = new AiChipDto(AiConstants.CHIP_PLAN_DENSITY, "日程",
+            "3", "项", Trend.NONE, "今日 3 项");
+        LlmMeta meta = new LlmMeta(120, 80, 850L);
+        return new AiInsightResponse(
+            "今日任务完成率 80%",
+            List.of(taskChip, expenseChip, planChip),
+            Instant.now(),
+            0L,
+            "llm",
+            "继续保持节奏",
+            "昨天完成了 5 个任务",
+            Mood.POSITIVE,
+            meta);
+    }
+
     // ---------- GET /today happy ----------
 
     @Test
@@ -220,6 +243,52 @@ class AiInsightControllerWebTest {
         mvc.perform(post("/api/v1/ai/insight/refresh").with(authentication(authToken())))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.code").value(ErrorCodeFixtures.AI_DEGRADED));
+    }
+
+    // ---------- GET /analysis (v2.1 PR3 独立分析页) ----------
+
+    @Test
+    void analysis_authenticated_returns200WithLlmMeta() throws Exception {
+        when(rateLimiter.hit(anyString(), anyInt(), Mockito.any())).thenReturn(false);
+        when(aiInsightService.getInsight(USER_ID)).thenReturn(sampleLlmResponse());
+
+        mvc.perform(get("/api/v1/ai/insight/analysis").with(authentication(authToken())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(0))
+            .andExpect(jsonPath("$.data.headline").value("今日任务完成率 80%"))
+            .andExpect(jsonPath("$.data.source").value("llm"))
+            .andExpect(jsonPath("$.data.advice").value("继续保持节奏"))
+            .andExpect(jsonPath("$.data.highlight").value("昨天完成了 5 个任务"))
+            .andExpect(jsonPath("$.data.mood").value("POSITIVE"))
+            .andExpect(jsonPath("$.data.llmMeta.promptTokens").value(120))
+            .andExpect(jsonPath("$.data.llmMeta.responseTokens").value(80))
+            .andExpect(jsonPath("$.data.freshnessSeconds").exists());
+
+        verify(aiInsightService).getInsight(USER_ID);
+        verify(rateLimiter).hit(eq(AiConstants.INSIGHT_RL_KEY_PREFIX + USER_ID),
+            eq(AiConstants.INSIGHT_GET_RL_MAX), Mockito.any());
+    }
+
+    @Test
+    void analysis_noToken_returns401WithCode1002() throws Exception {
+        mvc.perform(get("/api/v1/ai/insight/analysis"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS));
+
+        verify(aiInsightService, never()).getInsight(anyLong());
+        verify(rateLimiter, never()).hit(anyString(), anyInt(), Mockito.any());
+    }
+
+    @Test
+    void analysis_rateLimited_returns429WithCode1006() throws Exception {
+        when(rateLimiter.hit(anyString(), anyInt(), Mockito.any())).thenReturn(true);
+
+        mvc.perform(get("/api/v1/ai/insight/analysis").with(authentication(authToken())))
+            .andExpect(status().isTooManyRequests())
+            .andExpect(jsonPath("$.code").value(ErrorCode.LOGIN_RATE_LIMIT))
+            .andExpect(jsonPath("$.message").value("AI 洞察请求过于频繁，请稍后重试"));
+
+        verify(aiInsightService, never()).getInsight(anyLong());
     }
 
     /** 单一来源：测试用错误码（避免循环 import）。 */

@@ -45,8 +45,8 @@ public final class AiConstants {
     public static final int INSIGHT_GET_RL_MAX = 60;
     public static final Duration INSIGHT_GET_RL_WINDOW = Duration.ofMinutes(1);
 
-    /** AI 洞察主动刷新端点限流：POST 6/min（spec §7.4）。 */
-    public static final int INSIGHT_REFRESH_RL_MAX = 6;
+    /** AI 洞察主动刷新端点限流：POST 3/min（v2.1 由 6/min 收紧，CLAUDE.md §11.4）。 */
+    public static final int INSIGHT_REFRESH_RL_MAX = 3;
     public static final Duration INSIGHT_REFRESH_RL_WINDOW = Duration.ofMinutes(1);
 
     /** AI 洞察限流 Redis key 前缀：完整 key {@code lp:rl:ai:insight:<userId>}。 */

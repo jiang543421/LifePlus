@@ -37,7 +37,7 @@
           :md="8"
           class="home-view__grid-col"
         >
-          <div :data-testid="`home-card-${card.key}`">
+          <div :data-testid="`home-card-${card.key}`" class="home-view__card-wrapper">
             <ModuleCard
               :title="card.title"
               :icon="card.icon"
@@ -45,6 +45,19 @@
               :placeholder="card.kind === 'placeholder'"
               @placeholder-click="() => onPlaceholderClick(card.key)"
             />
+            <!-- v2.1 PR3：AI 卡右上角 source 角标（spec §7.3 / CLAUDE.md §11.3）。
+                 加载成功且后端 source 字段存在时显示；点击 AI 卡 → 抽屉打开时
+                 已可在 AiDrawer 顶部看到完整 loading skeleton，因此卡本体不再
+                 重复渲染骨架屏。 -->
+            <span
+              v-if="card.key === 'ai' && aiInsight?.source"
+              :class="['home-view__source-badge', `home-view__source-badge--${aiInsight.source}`]"
+              :data-testid="`home-card-source-badge`"
+              role="status"
+              :aria-label="aiInsight.source === 'llm' ? 'AI 智能生成' : '模板生成'"
+            >
+              {{ aiInsight.source === 'llm' ? 'AI 智能' : '模板' }}
+            </span>
           </div>
         </ElCol>
       </ElRow>
@@ -54,6 +67,7 @@
         :insight="aiInsight"
         :refreshing="aiRefreshing"
         @refresh="onAiRefresh"
+        @open-analysis="onAiOpenAnalysis"
       />
     </main>
   </div>
@@ -61,6 +75,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElRow, ElCol } from 'element-plus';
 import TopBar from '@/components/TopBar.vue';
 import ModuleCard from '@/components/ModuleCard.vue';
@@ -77,6 +92,7 @@ import { aiApi } from '@/api/ai';
 import { ApiError } from '@/api/http';
 
 const auth = useAuthStore();
+const router = useRouter();
 
 /** AI 卡交互状态（抽屉 + 数据 + 加载）。 */
 const aiDrawerOpen = ref(false);
@@ -113,6 +129,17 @@ async function onAiRefresh(): Promise<void> {
   } finally {
     aiRefreshing.value = false;
   }
+}
+
+/**
+ * v2.1 PR3：抽屉内点击「查看完整分析 →」→ 关抽屉 + 跳独立分析页。
+ * 独立页本身在 Task 24 创建并在 Task 25 加路由；此处先 emit handler。
+ */
+function onAiOpenAnalysis(): void {
+  aiDrawerOpen.value = false;
+  void router.push({ name: 'ai-analysis' }).catch(() => {
+    // 路由尚未注册（PR3 Task 25 落地前）静默吞掉；后续 Task 25 后会真正跳转。
+  });
 }
 
 /**
@@ -184,5 +211,34 @@ function handleAiError(error: unknown, actionLabel: '加载' | '刷新'): void {
 
 .home-view__grid-col {
   margin-bottom: 20px;
+}
+
+/* v2.1 PR3：AI 卡 source 角标（LLM 绿色 / 模板灰色，绝对定位右上角）。 */
+.home-view__card-wrapper {
+  position: relative;
+}
+
+.home-view__source-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 999px;
+  line-height: 1.5;
+  pointer-events: none;
+  /* 不阻挡卡片 click；视觉权重低，避免与 ModuleCard 标题争抢注意力 */
+}
+
+.home-view__source-badge--llm {
+  background: #e7f5ec;
+  color: #2c9c5b;
+}
+
+.home-view__source-badge--template {
+  background: #eef0f3;
+  color: #606266;
 }
 </style>

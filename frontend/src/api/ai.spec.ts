@@ -102,3 +102,37 @@ describe('aiApi.refresh', () => {
     await expect(aiApi.refresh()).rejects.toMatchObject({ code: 1006 });
   });
 });
+
+describe('aiApi.analysis', () => {
+  it('GET /ai/insight/analysis 返回解包后的 AiInsightResponse（含 v2.1 字段）', async () => {
+    const v21Insight = {
+      ...sampleInsight,
+      source: 'llm',
+      advice: '继续保持节奏',
+      highlight: '昨天完成了 5 个任务',
+      mood: 'POSITIVE',
+      llmMeta: { promptTokens: 120, responseTokens: 80, latencyMs: 850 },
+    };
+    mock.onGet('/ai/insight/analysis').reply(200, { code: 0, data: v21Insight });
+
+    const result = await aiApi.analysis();
+
+    expect(result).toEqual(v21Insight);
+    expect(result.source).toBe('llm');
+    expect(result.advice).toBe('继续保持节奏');
+    expect(result.mood).toBe('POSITIVE');
+    expect(result.llmMeta?.promptTokens).toBe(120);
+  });
+
+  it('后端返 1501 抛 ApiError(1501)', async () => {
+    mock.onGet('/ai/insight/analysis').reply(200, { code: 1501, message: '降级' });
+
+    await expect(aiApi.analysis()).rejects.toMatchObject({ code: 1501 });
+  });
+
+  it('后端返 1006 抛 ApiError(1006)', async () => {
+    mock.onGet('/ai/insight/analysis').reply(200, { code: 1006, message: '限流' });
+
+    await expect(aiApi.analysis()).rejects.toMatchObject({ code: 1006 });
+  });
+});

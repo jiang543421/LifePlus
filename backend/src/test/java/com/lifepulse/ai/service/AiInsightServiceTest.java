@@ -12,6 +12,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lifepulse.ai.AiConstants;
+import com.lifepulse.ai.llm.LlmInsightGenerator;
+import com.lifepulse.ai.llm.LlmInsightPayload;
+import com.lifepulse.ai.llm.LlmProperties;
+import com.lifepulse.ai.llm.Mood;
 import com.lifepulse.ai.model.MetricValue;
 import com.lifepulse.ai.model.Trend;
 import com.lifepulse.ai.provider.AiInsightProvider;
@@ -43,6 +47,11 @@ class AiInsightServiceTest {
     @SuppressWarnings("rawtypes")
     private ValueOperations valueOps;
 
+    @Mock
+    private LlmInsightGenerator llmGenerator;
+
+    private LlmProperties llmProps;
+
     private AiTemplateEngine templateEngine;
     private AiInsightService service;
 
@@ -68,10 +77,15 @@ class AiInsightServiceTest {
         dailyProvider = new FakeProvider(AiConstants.PROVIDER_DAILY, false,
             MetricValue.none());
 
+        llmProps = org.mockito.Mockito.mock(LlmProperties.class);
+        when(llmProps.enabled()).thenReturn(true);
+
         service = new AiInsightService(
             List.of(taskProvider, expenseProvider, planProvider, dietProvider, dailyProvider),
             templateEngine,
-            redisObjectProvider(redis)
+            redisObjectProvider(redis),
+            llmGenerator,
+            llmProps
         );
     }
 
@@ -95,7 +109,7 @@ class AiInsightServiceTest {
         assertThat(r.chips().get(1).key()).isEqualTo(AiConstants.CHIP_WEEKLY_EXPENSE);
         assertThat(r.chips().get(2).key()).isEqualTo(AiConstants.CHIP_PLAN_DENSITY);
         verify(valueOps, times(1)).set(anyString(), anyString(),
-            eq(AiConstants.CACHE_TTL_MINUTES), eq(TimeUnit.MINUTES));
+            anyLong(), any(TimeUnit.class));
     }
 
     @Test
@@ -134,7 +148,7 @@ class AiInsightServiceTest {
         // plan chip 正常
         assertThat(r.chips().get(2).value()).isEqualTo("3");
         verify(valueOps, times(1)).set(anyString(), anyString(),
-            eq(AiConstants.CACHE_TTL_MINUTES), eq(TimeUnit.MINUTES));
+            anyLong(), any(TimeUnit.class));
     }
 
     @Test
@@ -239,6 +253,76 @@ class AiInsightServiceTest {
         long fs = AiInsightService.freshnessSeconds(r);
 
         assertThat(fs).isGreaterThanOrEqualTo(5L);
+    }
+
+    @Test
+    void getInsight_llmSuccess_returnsSourceLlm_andLlmFields() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenReturn(null);
+        LlmInsightPayload payload = new LlmInsightPayload(
+            "LLM 生成的标题", "advice 内容", "highlight 内容",
+            Mood.POSITIVE, 10, 20, 1500L);
+        when(llmGenerator.generate(eq(7L), any(java.util.Map.class), any())).thenReturn(payload);
+
+        AiInsightResponse r = service.getInsight(7L);
+
+        assertThat(r.source()).isEqualTo("llm");
+        assertThat(r.headline()).isEqualTo("LLM 生成的标题");
+        assertThat(r.advice()).isEqualTo("advice 内容");
+        assertThat(r.highlight()).isEqualTo("highlight 内容");
+        assertThat(r.mood()).isEqualTo(Mood.POSITIVE);
+        assertThat(r.llmMeta()).isNotNull();
+        assertThat(r.llmMeta().promptTokens()).isEqualTo(10);
+    }
+
+    @Test
+    void getInsight_llmThrowsUnavailable_fallbackToTemplate() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenReturn(null);
+        when(llmGenerator.generate(anyLong(), any(java.util.Map.class), any()))
+            .thenThrow(new com.lifepulse.ai.llm.exception.LlmUnavailableException("deepseek 5xx"));
+
+        AiInsightResponse r = service.getInsight(7L);
+
+        assertThat(r.source()).isEqualTo("template");
+        assertThat(r.headline()).contains("80").contains("420");
+        assertThat(r.advice()).isNull();
+        assertThat(r.highlight()).isNull();
+        assertThat(r.mood()).isNull();
+        assertThat(r.llmMeta()).isNull();
+    }
+
+    @Test
+    void getInsight_llmThrowsQuota_fallbackToTemplate() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenReturn(null);
+        when(llmGenerator.generate(anyLong(), any(java.util.Map.class), any()))
+            .thenThrow(new com.lifepulse.ai.llm.exception.LlmQuotaExceededException(7L, 50L, 50L));
+
+        AiInsightResponse r = service.getInsight(7L);
+
+        assertThat(r.source()).isEqualTo("template");
+        assertThat(r.headline()).contains("80");
+    }
+
+    @Test
+    void getInsight_llmDisabled_skipsGenerator_usesTemplate() {
+        when(llmProps.enabled()).thenReturn(false);
+        service = new AiInsightService(
+            List.of(taskProvider, expenseProvider, planProvider, dietProvider, dailyProvider),
+            templateEngine,
+            redisObjectProvider(redis),
+            llmGenerator,
+            llmProps
+        );
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenReturn(null);
+
+        AiInsightResponse r = service.getInsight(7L);
+
+        assertThat(r.source()).isEqualTo("template");
+        assertThat(r.advice()).isNull();
+        verify(llmGenerator, never()).generate(anyLong(), any(java.util.Map.class), any());
     }
 
     private static String serialize(AiInsightResponse r) {

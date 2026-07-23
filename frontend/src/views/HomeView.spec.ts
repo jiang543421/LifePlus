@@ -18,12 +18,24 @@ vi.mock('@/api/ai', () => ({
   },
 }));
 
+const routerPush = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/router', () => ({
   default: {
-    push: vi.fn(),
+    push: (...args: unknown[]) => routerPush(...args),
     currentRoute: { value: { fullPath: '/' } },
   },
 }));
+// HomeView 调用 useRouter() 直接来自 'vue-router'，需要同步 mock 同一函数。
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
+  return {
+    ...actual,
+    useRouter: () => ({
+      push: (...args: unknown[]) => routerPush(...args),
+      currentRoute: { value: { fullPath: '/' } },
+    }),
+  };
+});
 
 const sampleInsight: AiInsightResponse = {
   headline: '今日任务完成率 80%；本周消费 ¥420。',
@@ -200,5 +212,81 @@ describe('HomeView — AI 卡集成', () => {
     expect(elMessageWarn).toHaveBeenCalledTimes(1);
     const msg = elMessageWarn.mock.calls[0][0] as string;
     expect(msg).toMatch(/网络异常/);
+  });
+
+  // ---- v2.1 PR3：AI 卡 source 角标 ----
+
+  it('AI 卡加载成功（source=llm）→ 右上角显示「AI 智能」角标', async () => {
+    vi.mocked(aiApi.today).mockResolvedValueOnce({ ...sampleInsight, source: 'llm' });
+    const wrapper = mountHome();
+    await flushPromises();
+
+    await clickCard(wrapper, 'ai');
+    await flushPromises();
+
+    const badge = wrapper.find('[data-testid="home-card-source-badge"]');
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toBe('AI 智能');
+    expect(badge.attributes('aria-label')).toBe('AI 智能生成');
+    expect(badge.classes()).toContain('home-view__source-badge--llm');
+  });
+
+  it('AI 卡 source=template → 显示「模板」角标（灰）', async () => {
+    vi.mocked(aiApi.today).mockResolvedValueOnce({ ...sampleInsight, source: 'template' });
+    const wrapper = mountHome();
+    await flushPromises();
+
+    await clickCard(wrapper, 'ai');
+    await flushPromises();
+
+    const badge = wrapper.find('[data-testid="home-card-source-badge"]');
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toBe('模板');
+    expect(badge.classes()).toContain('home-view__source-badge--template');
+  });
+
+  it('AI 卡未加载（aiInsight 为 null）→ 不显示角标', () => {
+    const wrapper = mountHome();
+    expect(wrapper.find('[data-testid="home-card-source-badge"]').exists()).toBe(false);
+  });
+
+  it('非 AI 卡（task / daily 等）→ 永远不显示角标', async () => {
+    vi.mocked(aiApi.today).mockResolvedValueOnce({ ...sampleInsight, source: 'llm' });
+    const wrapper = mountHome();
+    await flushPromises();
+
+    await clickCard(wrapper, 'ai');
+    await flushPromises();
+
+    // AI 卡有角标，其他卡没有
+    expect(wrapper.find('[data-testid="home-card-source-badge"]').exists()).toBe(true);
+    const aiCard = wrapper.find('[data-testid="home-card-ai"]');
+    expect(aiCard.find('[data-testid="home-card-source-badge"]').exists()).toBe(true);
+    const dailyCard = wrapper.find('[data-testid="home-card-daily"]');
+    expect(dailyCard.find('[data-testid="home-card-source-badge"]').exists()).toBe(false);
+  });
+
+  // ---- v2.1 PR3：抽屉「查看完整分析 →」跳转 ----
+
+  it('抽屉 emit open-analysis → drawer 关闭 + router.push(\'ai-analysis\')', async () => {
+    vi.mocked(aiApi.today).mockResolvedValueOnce({ ...sampleInsight, source: 'llm' });
+    const wrapper = mountHome();
+    await flushPromises();
+
+    await clickCard(wrapper, 'ai');
+    await flushPromises();
+
+    const AiDrawerCmp = (await import('@/components/AiDrawer.vue')).default;
+    const drawer = wrapper.findComponent(AiDrawerCmp);
+    expect(drawer.exists()).toBe(true);
+
+    const vm = wrapper.vm as unknown as { aiDrawerOpen: boolean };
+    expect(vm.aiDrawerOpen).toBe(true);
+
+    await drawer.vm.$emit('open-analysis');
+    await flushPromises();
+
+    expect(vm.aiDrawerOpen).toBe(false);
+    expect(routerPush).toHaveBeenCalledWith({ name: 'ai-analysis' });
   });
 });

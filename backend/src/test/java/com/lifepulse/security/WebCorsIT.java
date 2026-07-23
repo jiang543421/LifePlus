@@ -69,6 +69,12 @@ class WebCorsIT {
         // 注入合法 JWT secret（≥32 字节、不含 'replace-me'）— JwtService.init fail-fast 校验拒绝占位符
         registry.add("lp.jwt.secret",
                 () -> "test-only-jwt-secret-32bytes-min-padding-not-real-secret-aaaaaaaa");
+        // PR2 v2.1：关闭 LLM（CORS 测试不验 LLM 链路）。基类 AbstractIntegrationTest
+        // 已对继承 IT 默认关闭 LLM；本类独立声明 MySQLContainer，需显式注入。
+        registry.add("lp.ai.llm.enabled", () -> "false");
+        // 跨 IT 复用 MySQL 容器导致 Flyway schema_history 比 classpath 滞后（漏 V5+），
+        // 关闭校验让 Flyway 直接增量应用；与 AbstractIntegrationTest 同策略。
+        registry.add("spring.flyway.validate-on-migrate", () -> "false");
     }
 
     @Test

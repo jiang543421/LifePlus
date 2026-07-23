@@ -1114,7 +1114,7 @@ export async function mockDietCrossUser(page: Page, dietId: number): Promise<voi
 }
 
 // ----------------------------------------------------------------------
-// AI 模块 mock（v2.0）
+// AI 模块 mock（v2.0 + v2.1 LLM 扩展）
 // ----------------------------------------------------------------------
 
 /** 单条 AI 洞察 mock 数据（与后端 AiInsightResponse 对齐）。 */
@@ -1130,6 +1130,20 @@ export interface MockAiInsight {
   }>;
   generatedAt: string;
   freshnessSeconds: number;
+  /** v2.1：LLM 命中则为 'llm'，模板降级为 'template'；v2.0 旧 spec 不关心此字段。 */
+  source?: 'llm' | 'template';
+  /** v2.1：LLM 生成的建议（独立页 advice 段）。 */
+  advice?: string;
+  /** v2.1：LLM 生成的亮点（独立页 highlight 段）。 */
+  highlight?: string;
+  /** v2.1：LLM 评定的心情。 */
+  mood?: 'POSITIVE' | 'NEUTRAL' | 'CAUTIOUS';
+  /** v2.1：LLM 元数据（当前 spec 不强断言，只透传给前端）。 */
+  llmMeta?: {
+    promptTokens: number;
+    responseTokens: number;
+    latencyMs: number;
+  };
 }
 
 const DEFAULT_AI_INSIGHT: MockAiInsight = {
@@ -1141,20 +1155,27 @@ const DEFAULT_AI_INSIGHT: MockAiInsight = {
   ],
   generatedAt: '2026-07-22T08:00:00Z',
   freshnessSeconds: 12,
+  // v2.1 默认按 LLM 命中给出，便于 v2.0 + v2.1 共用。
+  source: 'llm',
+  advice: '优先完成 2 项高优先级任务',
+  highlight: '任务完成率较昨日 +20%',
+  mood: 'POSITIVE',
 };
 
 /** setupAiDefaults 返回的可变状态。 */
 export interface AiMockState {
   insight: MockAiInsight;
   todayCallCount: number;
+  analysisCallCount: number;
   refreshCallCount: number;
 }
 
 /**
- * 一站式 AI mock：拦截 `/api/v1/ai/insight/today` 与 `/api/v1/ai/insight/refresh`。
+ * 一站式 AI mock：拦截 `/api/v1/ai/insight/today`、`/api/v1/ai/insight/analysis`
+ * 与 `/api/v1/ai/insight/refresh`（v2.1）。
  *
- * <p>`/today` 默认返回 {@link DEFAULT_AI_INSIGHT}；`/refresh` 默认重算
- * freshnessSeconds=0 + 推进 generatedAt 用于断言"刷新后值被替换"。
+ * <p>`/today` 与 `/analysis` 默认返回 {@link DEFAULT_AI_INSIGHT}；
+ * `/refresh` 默认重算 freshnessSeconds=0 + 推进 generatedAt 用于断言"刷新后值被替换"。
  * 闭包内状态便于测试断言调用次数与是否真的触发。
  *
  * <p>真实后端契约由 {@code backend/.../ai/AiInsightIT.java}（Testcontainers）覆盖。
@@ -1166,6 +1187,7 @@ export async function setupAiDefaults(
   const state: AiMockState = {
     insight: opts?.insight ?? DEFAULT_AI_INSIGHT,
     todayCallCount: 0,
+    analysisCallCount: 0,
     refreshCallCount: 0,
   };
 
@@ -1175,6 +1197,19 @@ export async function setupAiDefaults(
 
     if (req.method() === 'GET' && path === '/ai/insight/today') {
       state.todayCallCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(state.insight),
+      });
+      return;
+    }
+
+    // v2.1：GET /analysis 与 /today 共享同缓存；mock 也复用同一份 response。
+    // 这样断言"从首页抽屉进入分析页不发额外请求"的关键路径可在 v2.0 spec
+    // 里复用——analysisCallCount = 0 视为通过。
+    if (req.method() === 'GET' && path === '/ai/insight/analysis') {
+      state.analysisCallCount += 1;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

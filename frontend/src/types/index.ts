@@ -132,7 +132,7 @@ export interface AiChipDto {
   deltaText: string;
 }
 
-/** AI 洞察完整响应（GET /ai/insight/today、POST /ai/insight/refresh）。
+/** AI 洞察完整响应（GET /ai/insight/today、POST /ai/insight/refresh、GET /ai/insight/analysis）。
  * 字段顺序与后端 AiInsightResponse record 完全一致。 */
 export interface AiInsightResponse {
   /** 中文主文（已渲染好，可直接展示）。 */
@@ -143,6 +143,35 @@ export interface AiInsightResponse {
   generatedAt: string;
   /** 距生成的秒数（Controller 现算，负值钳为 0）。 */
   freshnessSeconds: number;
+  // --- v2.1 LLM 增强字段（spec §7.3 / CLAUDE.md §11.3）---
+  /** 数据来源标签。`llm` 显示"AI 智能"角标，`template` 显示"模板"角标。
+   * v2.0 老缓存条目无此字段 → undefined → UI 不显示角标（视为模板）。 */
+  source?: AiSource;
+  /** LLM 生成的行动建议（v2.1 独立分析页用）。模板降级时后端不返回。 */
+  advice?: string;
+  /** LLM 生成的亮点高亮（v2.1 独立分析页用）。模板降级时后端不返回。 */
+  highlight?: string;
+  /** LLM 生成的情绪标签（v2.1 独立分析页用）。模板降级时后端不返回。 */
+  mood?: Mood;
+  /** LLM 调用元信息（token / 耗时），供前端可选渲染细节。模板降级时不返回。 */
+  llmMeta?: LlmMeta;
+}
+
+/** v2.1：AI 洞察数据来源（spec §7.3 / CLAUDE.md §11.3）。
+ * 与后端 `AiInsightResponse.source` JSON 值对齐：Jackson 反序列化为字符串。 */
+export type AiSource = 'llm' | 'template';
+
+/** v2.1：LLM 输出情绪标签（spec §1.5）。
+ * 与后端 `Mood` enum 对齐：序列化 PascalCase（POSITIVE / NEUTRAL / CAUTIOUS）。 */
+export type Mood = 'POSITIVE' | 'NEUTRAL' | 'CAUTIOUS';
+
+/** v2.1：LLM 调用元信息（spec §1.6）。
+ * 与后端 `LlmMeta` record 对齐：promptTokens / responseTokens / latencyMs。 */
+export interface LlmMeta {
+  promptTokens: number;
+  responseTokens: number;
+  /** 端到端耗时（毫秒），后端 LlmClient 实测得到。 */
+  latencyMs: number;
 }
 
 /** 跨模块错误码常量 — 新增 AI 模块专属 1501（与后端 ErrorCode.AI_DEGRADED 对齐）。

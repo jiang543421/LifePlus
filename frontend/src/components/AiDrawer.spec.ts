@@ -107,6 +107,30 @@ describe('AiDrawer', () => {
     expect(wrapper.find('[data-testid="ai-drawer-refresh"]').exists()).toBe(true);
   });
 
+  // ---- v2.1 PR3：「查看完整分析 →」入口 ----
+
+  it('source=llm 时显示「查看完整分析 →」按钮', async () => {
+    const wrapper = mountDrawer({ insight: { ...sampleInsight, source: 'llm' } });
+    await flushPromises();
+    const link = wrapper.find('[data-testid="ai-drawer-open-analysis"]');
+    expect(link.exists()).toBe(true);
+    expect(link.text()).toContain('查看完整分析');
+  });
+
+  it('source=template 时不显示「查看完整分析 →」按钮（独立页无 LLM 专属字段）', async () => {
+    const wrapper = mountDrawer({ insight: { ...sampleInsight, source: 'template' } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="ai-drawer-open-analysis"]').exists()).toBe(false);
+  });
+
+  it('点击「查看完整分析 →」emit open-analysis 事件', async () => {
+    const wrapper = mountDrawer({ insight: { ...sampleInsight, source: 'llm' } });
+    await flushPromises();
+    await wrapper.find('[data-testid="ai-drawer-open-analysis"]').trigger('click');
+    expect(wrapper.emitted('open-analysis')).toBeTruthy();
+    expect(wrapper.emitted('open-analysis')).toHaveLength(1);
+  });
+
   it('insight=null 时抽屉主体不渲染（v-if 短路）', async () => {
     const wrapper = mountDrawer({ insight: null });
     await flushPromises();

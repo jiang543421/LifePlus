@@ -20,6 +20,9 @@ const routes: RouteRecordRaw[] = [
   // spec §07-diet：/diets 与 /diets/:id 都需登录；:id 限定数字避免 catch-all 误吞。
   { path: '/diets', name: 'diet-list', component: () => import('@/views/DietView.vue'), meta: { title: '饮食' } },
   { path: '/diets/:id(\\d+)', name: 'diet-detail', component: () => import('@/views/DietDetailView.vue'), meta: { title: '饮食详情' } },
+  // v2.1 PR3：独立 AI 分析页（spec §7.3 / CLAUDE.md §11.3）。
+  // 与 Home 共享 6h Redis 缓存；需登录，由 beforeEach 统一拦截。
+  { path: '/ai-analysis', name: 'ai-analysis', component: () => import('@/views/AiAnalysisView.vue'), meta: { title: 'AI 分析' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

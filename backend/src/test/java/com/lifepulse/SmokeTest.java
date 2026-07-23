@@ -14,6 +14,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.TestPropertySource;
 
@@ -70,6 +71,12 @@ class SmokeTest {
     @MockBean private RateLimiter rateLimiter;
     @MockBean private JwtService jwtService;
     @MockBean private AuthService authService;
+    // PR2 v2.1：LlmCircuitBreaker / LlmQuotaGuard 直接依赖 StringRedisTemplate（与
+    // AiInsightService 不同，没用 ObjectProvider）。本测试排除了 RedisAutoConfiguration
+    // → StringRedisTemplate bean 不存在 → 装配炸。Mockito 替身让 context 能完整装配；
+    // LLM 路径仍由 enabled=false 完全绕过（TestPropertySource line 59-61），
+    // mock 不会被实际调用。
+    @MockBean private StringRedisTemplate stringRedisTemplate;
 
     @AfterEach
     void tearDown() {

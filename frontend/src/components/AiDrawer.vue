@@ -42,14 +42,28 @@
         <span class="ai-drawer__freshness">
           {{ freshnessLabel }}
         </span>
-        <ElButton
-          type="primary"
-          :loading="refreshing"
-          data-testid="ai-drawer-refresh"
-          @click="onRefreshClick"
-        >
-          刷新
-        </ElButton>
+        <div class="ai-drawer__footer-actions">
+          <!-- v2.1 PR3：跳转到独立分析页（spec §7.3 / CLAUDE.md §11.3）。
+               仅 source=llm 时显示：模板降级数据无 advice/highlight/mood 等
+               LLM 专属字段，独立页会显示空段，UX 不如直接关闭抽屉。 -->
+          <ElButton
+            v-if="insight?.source === 'llm'"
+            text
+            type="primary"
+            data-testid="ai-drawer-open-analysis"
+            @click="onOpenAnalysisClick"
+          >
+            查看完整分析 →
+          </ElButton>
+          <ElButton
+            type="primary"
+            :loading="refreshing"
+            data-testid="ai-drawer-refresh"
+            @click="onRefreshClick"
+          >
+            刷新
+          </ElButton>
+        </div>
       </footer>
     </div>
   </ElDrawer>
@@ -75,6 +89,8 @@ const emit = defineEmits<{
   (e: 'update:show', value: boolean): void;
   /** 用户点击「刷新」按钮，父组件触发 aiApi.refresh() 并回传新值。 */
   (e: 'refresh'): void;
+  /** v2.1 PR3：用户点击「查看完整分析 →」，父组件关闭抽屉 + 跳转 /ai-analysis。 */
+  (e: 'open-analysis'): void;
 }>();
 
 /** 把 freshnessSeconds 渲染为「X 秒前 / X 分钟前 / X 小时前」。 */
@@ -89,6 +105,10 @@ const freshnessLabel = computed(() => {
 
 function onRefreshClick(): void {
   emit('refresh');
+}
+
+function onOpenAnalysisClick(): void {
+  emit('open-analysis');
 }
 </script>
 
@@ -172,6 +192,12 @@ function onRefreshClick(): void {
   justify-content: space-between;
   align-items: center;
   margin-top: 4px;
+}
+
+.ai-drawer__footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ai-drawer__freshness {

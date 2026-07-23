@@ -4,6 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lifepulse.ai.AiConstants;
+import com.lifepulse.ai.llm.LlmInsightGenerator;
+import com.lifepulse.ai.llm.LlmInsightPayload;
+import com.lifepulse.ai.llm.LlmMeta;
+import com.lifepulse.ai.llm.LlmProperties;
+import com.lifepulse.ai.llm.Mood;
 import com.lifepulse.ai.model.MetricValue;
 import com.lifepulse.ai.provider.AiCollectContext;
 import com.lifepulse.ai.provider.AiInsightProvider;
@@ -15,8 +20,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,13 +33,14 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * AI 洞察编排层（spec §4 / §6 / §9）。
+ * AI 洞察编排层（spec §4 / §6 / §9 / v2.1 §11.3）。
  *
  * <p>职责：
  * <ol>
- *   <li>缓存读写（Redis，TTL 30 min）</li>
+ *   <li>缓存读写（Redis，v2.1 TTL 6h，v2.0 时为 30 min）</li>
  *   <li>串联 5 个 provider，任一失败 catch + log + 该 chip 占位</li>
- *   <li>模板渲染主文 + chip 副标</li>
+ *   <li>模板渲染主文 + chip 副标（L2 默认）</li>
+ *   <li>v2.1：尝试 LLM 生成（L1），失败时降级回 L2 模板，{@code source} 标签区分</li>
  *   <li>全部失败 → 抛 {@code BusinessException(1501)}</li>
  * </ol>
  */
@@ -43,19 +52,28 @@ public class AiInsightService {
     /** plan density 阈值：≥5 busy / 1-4 normal / 0 free（spec §6.3）。 */
     private static final int PLAN_DENSITY_BUSY_THRESHOLD = 5;
 
+    /** v2.1：缓存 TTL 30min → 6h（21600s，CLAUDE.md §11.4 / spec §9.1）。 */
+    private static final long CACHE_TTL_SECONDS = 6L * 60 * 60;
+
     /** Jackson 用于缓存 JSON 序列化。 */
     private static final ObjectMapper OM = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private final List<AiInsightProvider> providers;
     private final AiTemplateEngine templateEngine;
     private final StringRedisTemplate redis;
+    private final LlmInsightGenerator llmGenerator;
+    private final boolean llmEnabled;
 
     public AiInsightService(List<AiInsightProvider> providers,
                             AiTemplateEngine templateEngine,
-                            ObjectProvider<StringRedisTemplate> redisProvider) {
+                            ObjectProvider<StringRedisTemplate> redisProvider,
+                            LlmInsightGenerator llmGenerator,
+                            LlmProperties llmProps) {
         this.providers = List.copyOf(providers);
         this.templateEngine = templateEngine;
         this.redis = redisProvider.getIfAvailable();
+        this.llmGenerator = llmGenerator;
+        this.llmEnabled = llmProps.enabled();
     }
 
     /**
@@ -112,19 +130,47 @@ public class AiInsightService {
                 "AI 洞察数据暂时不可用，请稍后重试");
         }
 
-        AiInsightResponse response = buildResponse(collected);
+        AiInsightResponse response = buildResponse(userId, collected, ctx.today());
         writeCache(cacheKey, response);
         return response;
     }
 
     // ===== 私有组装 =====
 
-    private AiInsightResponse buildResponse(List<MetricValue> collected) {
+    private AiInsightResponse buildResponse(long userId, List<MetricValue> collected, LocalDate today) {
         MetricValue task = valueAt(collected, AiConstants.PROVIDER_TASK);
         MetricValue expense = valueAt(collected, AiConstants.PROVIDER_EXPENSE);
         MetricValue plan = valueAt(collected, AiConstants.PROVIDER_PLAN);
 
+        // L2 默认：模板渲染
         String headline = renderHeadline(task, expense);
+        String source = "template";
+        String advice = null;
+        String highlight = null;
+        Mood mood = null;
+        LlmMeta llmMeta = null;
+
+        // L1：尝试 LLM（CLAUDE.md §11.3 L1 失败不重试，4 类异常由 Service 统一 catch → L2）
+        if (llmEnabled) {
+            try {
+                // 按 provider.key() 映射成 Map<String, MetricValue>；generator 内部按需取 4 chip
+                Map<String, MetricValue> metricMap = new LinkedHashMap<>();
+                for (int i = 0; i < providers.size() && i < collected.size(); i++) {
+                    metricMap.put(providers.get(i).key(), collected.get(i));
+                }
+                LlmInsightPayload payload = llmGenerator.generate(userId, metricMap, today);
+                headline = payload.headline();
+                advice = payload.advice();
+                highlight = payload.highlight();
+                mood = payload.mood();
+                llmMeta = payload.llmMeta();
+                source = "llm";
+            } catch (RuntimeException ex) {
+                log.warn("AI LLM fallback to template: userId={}, err={}", userId, ex.toString());
+                // source 保持 "template"，其余字段保持 null
+            }
+        }
+
         List<AiChipDto> chips = List.of(
             chipForTask(task),
             chipForExpense(expense),
@@ -132,10 +178,8 @@ public class AiInsightService {
         );
 
         return new AiInsightResponse(
-            headline,
-            chips,
-            Instant.now(),
-            0L
+            headline, chips, Instant.now(), 0L,
+            source, advice, highlight, mood, llmMeta
         );
     }
 
@@ -260,8 +304,7 @@ public class AiInsightService {
     private void writeCache(String key, AiInsightResponse response) {
         try {
             String json = OM.writeValueAsString(response);
-            redis.opsForValue().set(key, json,
-                AiConstants.CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+            redis.opsForValue().set(key, json, CACHE_TTL_SECONDS, TimeUnit.SECONDS);
         } catch (RuntimeException | JsonProcessingException ex) {
             log.warn("AI cache write failed: key={}, err={}", key, ex.toString());
         }

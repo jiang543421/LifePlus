@@ -79,5 +79,20 @@ public abstract class AbstractIntegrationTest {
         // IT 必须显式注入一个测试专用 secret 才通过。
         registry.add("lp.jwt.secret",
                 () -> "test-only-jwt-secret-32bytes-min-padding-not-real-secret-aaaaaaaa");
+
+        // LLM 全局关闭（CLAUDE.md §11.3 B 类场景）：基类下钻到"LLM 关闭 → 走 L2 模板"
+        // 路径。PR2 引入的 @Component LLM 链（LlmClient / LlmCircuitBreaker /
+        // LlmQuotaGuard / LlmInsightGenerator）在 Spring 启动时被实例化，
+        // 这会触发 LlmProperties 绑定 → 紧凑构造器 fail-fast（provider=deepseek
+        // + api-key 为空 → IllegalStateException）。本基类缺省关闭，子类需要
+        // 验证 LLM happy path 时再 @DynamicPropertySource 覆盖 enabled=true
+        // 并补齐 api-key / base-url（如 AiAnalysisIT）。
+        registry.add("lp.ai.llm.enabled", () -> "false");
+
+        // Testcontainers MySQL withReuse=true 跨测试复用：上次跑过的 schema_history
+        // 表只记录到 V1-V4，新加的 V5/V6 migration 报 "Detected resolved migration
+        // not applied to database"。IT 关闭校验，让 Flyway 直接把增量 migration 应用上去；
+        // prod 仍走 validate=true（application.yml 默认），保护迁移完整性。
+        registry.add("spring.flyway.validate-on-migrate", () -> "false");
     }
 }

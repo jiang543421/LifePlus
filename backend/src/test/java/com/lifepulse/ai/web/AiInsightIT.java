@@ -83,9 +83,11 @@ class AiInsightIT extends AbstractIntegrationTest {
         String accessToken = accessTokenFor(email, "Valid1Pass", ip);
 
         // 无 t_task / t_expense → 全部 provider 返回 0 或 disabled → 1501
+        // AI_DEGRADED (1501) 在 GlobalExceptionHandler 映射到 HTTP 503 (Service Unavailable)，
+        // 符合 spec §6.4 "AI 不可用 → 503"。
         mvc.perform(get("/api/v1/ai/insight/today")
                         .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isInternalServerError())
+            .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.code").value(ErrorCode.AI_DEGRADED));
     }
 
