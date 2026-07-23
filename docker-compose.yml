@@ -6,7 +6,7 @@ services:
             MYSQL_USER: lp
             MYSQL_PASSWORD: lp_dev_only
             MYSQL_ROOT_PASSWORD: lp_root_only
-        ports: ["3306:3306"]
+        ports: ["3307:3306"]
         volumes: ["dbdata:/var/lib/mysql"]
         healthcheck:
             test: ["CMD", "mysqladmin", "ping", "-uroot", "-plp_root_only"]
@@ -15,7 +15,7 @@ services:
             retries: 20
     redis:
         image: redis:7-alpine
-        ports: ["6379:6379"]
+        ports: ["6380:6379"]
         healthcheck:
             test: ["CMD", "redis-cli", "ping"]
             interval: 5s
@@ -27,13 +27,15 @@ services:
             db: { condition: service_healthy }
             redis: { condition: service_healthy }
         environment:
-            LP_DB_URL: jdbc:mysql://db:3306/lifepulse?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+            LP_DB_URL: jdbc:mysql://db:3306/lifepulse?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
             LP_DB_USER: lp
             LP_DB_PASS: lp_dev_only
             LP_REDIS_URL: redis://redis:6379
-            LP_JWT_SECRET: dev-only-secret-replace-me-32bytes-xxx
+            LP_JWT_SECRET: lp-dev-secret-not-for-production-please-rotate-32bytes-min-x
             # prod 必须从 .env 覆盖；这里给 dev 的占位（CLAUDE.md §7.5 / R-004）
             LP_CORS_ORIGINS: ${LP_CORS_ORIGINS:-http://localhost}
+            # dev 默认禁用 LLM（无 LP_LLM_API_KEY）；prod 必须从 .env 覆盖（CLAUDE.md §11.2 / §11.3 B 类触发）
+            LP_LLM_ENABLED: ${LP_LLM_ENABLED:-false}
         ports: ["8080:8080"]
     frontend:
         build:
@@ -42,7 +44,7 @@ services:
                 # nginx.conf 的 CSP connect-src 注入具体 API origin
                 LP_API_ORIGIN: ${LP_API_ORIGIN:-http://localhost:8080}
         depends_on: [backend]
-        ports: ["80:80"]
+        ports: ["8081:80"]
     # Optional: local Ollama for offline / privacy mode (CLAUDE.md §11.2)
     # Start with: docker compose --profile llm-ollama up -d
     # Pull model: docker compose exec ollama ollama pull deepseek-r1:8b
