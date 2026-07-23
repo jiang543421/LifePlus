@@ -1,5 +1,9 @@
 package com.lifepulse.ai.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.lifepulse.ai.AiConstants;
 import com.lifepulse.ai.web.dto.AiTrendResponse;
 import com.lifepulse.ai.web.dto.MetricPointDto;
 import com.lifepulse.ai.web.dto.MetricSeriesDto;
@@ -19,6 +23,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 /**
@@ -50,6 +59,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class AiTrendService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiTrendService.class);
+
+    /** Jackson 用于缓存 JSON 序列化（与 AiInsightService 同源同 OM）。 */
+    private static final ObjectMapper OM = new ObjectMapper().registerModule(new JavaTimeModule());
+
     /** 指标 key 常量（与 DTO FIXED_METRICS 顺序一致；本类不导出避免双源）。 */
     static final String KEY_TASK = "task";
     static final String KEY_PLAN = "plan";
@@ -70,9 +84,34 @@ public class AiTrendService {
     private static final int AMOUNT_SCALE = 2;
 
     private final DailyReportService dailyReportService;
+    /** Redis 可选注入（Redis 不可达时退化为纯计算，CLAUDE.md §11.5 fail-open）。 */
+    private final StringRedisTemplate redis;
 
     public AiTrendService(DailyReportService dailyReportService) {
+        this(dailyReportService, null);
+    }
+
+    public AiTrendService(DailyReportService dailyReportService,
+                          ObjectProvider<StringRedisTemplate> redisProvider) {
         this.dailyReportService = dailyReportService;
+        this.redis = redisProvider == null ? null : redisProvider.getIfAvailable();
+    }
+
+    /**
+     * 取趋势：先查缓存（6h TTL），miss 则重算并写回。
+     *
+     * <p>fail-open：缓存读写失败一律降级为纯计算（不抛异常给用户）。
+     */
+    public AiTrendResponse getTrend(long userId, int windowDays) {
+        validateWindow(windowDays);
+        String cacheKey = trendCacheKey(userId, windowDays);
+        AiTrendResponse cached = readTrendCache(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        AiTrendResponse fresh = range(userId, windowDays);
+        writeTrendCache(cacheKey, fresh);
+        return fresh;
     }
 
     /**
@@ -146,5 +185,39 @@ public class AiTrendService {
         BigDecimal amount = e.totalAmount();
         double v = amount.setScale(AMOUNT_SCALE, RoundingMode.HALF_UP).doubleValue();
         return new MetricPointDto(d, v, UNIT_YUAN + amount.toPlainString());
+    }
+
+    // ===== 缓存（fail-open） =====
+
+    private static String trendCacheKey(long userId, int windowDays) {
+        return AiConstants.TREND_CACHE_KEY_PREFIX + userId + ":" + windowDays;
+    }
+
+    private AiTrendResponse readTrendCache(String key) {
+        if (redis == null) {
+            return null;
+        }
+        try {
+            String json = redis.opsForValue().get(key);
+            if (json == null) {
+                return null;
+            }
+            return OM.readValue(json, AiTrendResponse.class);
+        } catch (RuntimeException | JsonProcessingException ex) {
+            log.warn("trend cache read failed: key={}, err={}", key, ex.toString());
+            return null;
+        }
+    }
+
+    private void writeTrendCache(String key, AiTrendResponse r) {
+        if (redis == null) {
+            return;
+        }
+        try {
+            redis.opsForValue().set(key, OM.writeValueAsString(r),
+                    AiConstants.TREND_CACHE_TTL_SECONDS, TimeUnit.SECONDS);
+        } catch (RuntimeException | JsonProcessingException ex) {
+            log.warn("trend cache write failed: key={}, err={}", key, ex.toString());
+        }
     }
 }
