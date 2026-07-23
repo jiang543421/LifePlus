@@ -53,14 +53,39 @@ const rows = computed<NutritionRow[]>(() => {
     fatG: s?.fatG ?? 0,
   };
   return [
-    { key: 'kcal', label: '热量', unit: 'kcal', recommended: rec.kcal, value: value.kcal, percent: 0 },
-    { key: 'proteinG', label: '蛋白质', unit: 'g', recommended: rec.proteinG, value: value.proteinG, percent: 0 },
-    { key: 'carbG', label: '碳水', unit: 'g', recommended: rec.carbG, value: value.carbG, percent: 0 },
-    { key: 'fatG', label: '脂肪', unit: 'g', recommended: rec.fatG, value: value.fatG, percent: 0 },
-  ].map((r) => ({
-    ...r,
-    percent: r.recommended > 0 ? (r.value / r.recommended) * 100 : 0,
-  }));
+    {
+      key: 'kcal' as const,
+      label: '热量',
+      unit: 'kcal',
+      recommended: rec.kcal,
+      value: value.kcal,
+      percent: rec.kcal > 0 ? (value.kcal / rec.kcal) * 100 : 0,
+    },
+    {
+      key: 'proteinG' as const,
+      label: '蛋白质',
+      unit: 'g',
+      recommended: rec.proteinG,
+      value: value.proteinG,
+      percent: rec.proteinG > 0 ? (value.proteinG / rec.proteinG) * 100 : 0,
+    },
+    {
+      key: 'carbG' as const,
+      label: '碳水',
+      unit: 'g',
+      recommended: rec.carbG,
+      value: value.carbG,
+      percent: rec.carbG > 0 ? (value.carbG / rec.carbG) * 100 : 0,
+    },
+    {
+      key: 'fatG' as const,
+      label: '脂肪',
+      unit: 'g',
+      recommended: rec.fatG,
+      value: value.fatG,
+      percent: rec.fatG > 0 ? (value.fatG / rec.fatG) * 100 : 0,
+    },
+  ];
 });
 
 /** 顶部大字号热量（kcal）数字。 */

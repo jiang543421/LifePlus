@@ -40,9 +40,8 @@ import {
   ElSelect,
 } from 'element-plus';
 import { MAX_NAME_LEN, MAX_NOTE_LEN, MEAL_LABEL, MEAL_TYPES } from '@/constants/diet';
-import type { MealType } from '@/constants/diet';
 import { useDietStore } from '@/stores/diet';
-import type { CreateDietRequest, DietResponse, UpdateDietRequest } from '@/types';
+import type { CreateDietRequest, DietResponse, MealType, UpdateDietRequest } from '@/types';
 
 const props = defineProps<{
   modelValue: boolean;

@@ -39,7 +39,7 @@ import { dietApi } from '@/api/diet';
 import { showAuthError } from '@/utils/error';
 import { useDietStore } from '@/stores/diet';
 import { MEAL_LABEL, MEAL_TYPES } from '@/constants/diet';
-import type { MealType } from '@/constants/diet';
+import type { MealType } from '@/types';
 import DietDayGroup from '@/components/DietDayGroup.vue';
 import DietNutritionCard from '@/components/DietNutritionCard.vue';
 import DietDialog from '@/components/DietDialog.vue';
