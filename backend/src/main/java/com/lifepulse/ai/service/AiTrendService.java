@@ -54,7 +54,14 @@ import org.springframework.stereotype.Service;
  * 由 IT 验证 P95 ≤ 800ms（{@code DAILY_P95_BUDGET × 30/14} 余量），本批次不写
  * 性能 IT（沿用 {@code DailyReportServiceIT} 的既有 P95 ≤ 200ms 单日基线）。
  *
- * <p><b>构造器</b>：显式注入 {@link DailyReportService}（CLAUDE.md java/patterns）。
+ * <p><b>构造器</b>：单构造器显式注入 {@link DailyReportService} +
+ * {@link ObjectProvider}{@code <StringRedisTemplate>}（CLAUDE.md java/patterns
+ * 强制构造器注入）。{@code ObjectProvider} 在 Redis 容器缺席时返回 null，
+ * 自动 fail-open 走纯计算（CLAUDE.md §11.5）。不允许多构造器（会让 Spring
+ * 在启动期报 "No default constructor found"）。
+ *
+ * <p><b>单测场景</b>：直接 {@code new AiTrendService(mockService, null)} 即可
+ * 跳过 Redis 分支。
  */
 @Service
 public class AiTrendService {
@@ -87,10 +94,13 @@ public class AiTrendService {
     /** Redis 可选注入（Redis 不可达时退化为纯计算，CLAUDE.md §11.5 fail-open）。 */
     private final StringRedisTemplate redis;
 
-    public AiTrendService(DailyReportService dailyReportService) {
-        this(dailyReportService, null);
-    }
-
+    /**
+     * 单构造器：Spring 通过 {@code ObjectProvider.getIfAvailable()} 在 Redis
+     * bean 缺席时返回 {@code null}，自动走纯计算分支。
+     *
+     * @param dailyReportService 日报聚合服务（必填）
+     * @param redisProvider      Redis 提供者；单测可传 {@code null}
+     */
     public AiTrendService(DailyReportService dailyReportService,
                           ObjectProvider<StringRedisTemplate> redisProvider) {
         this.dailyReportService = dailyReportService;

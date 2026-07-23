@@ -45,7 +45,7 @@ class AiTrendServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AiTrendService(dailyReportService);
+        service = new AiTrendService(dailyReportService, null);
     }
 
     /**
