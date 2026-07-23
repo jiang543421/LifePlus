@@ -136,6 +136,37 @@ class AiTrendServiceTest {
         assertThat(resp.series().get("task").points()).hasSize(14);
     }
 
+    /**
+     * Case 5：task 字段映射 — value=completionRate（原始 double），label="{pct}%"，
+     * date 与 offset 对齐。
+     */
+    @Test
+    void range_taskSeries_mapsCompletionRateToValueAndPercentLabel() {
+        LocalDate today = LocalDate.of(2026, 7, 23);
+        when(dailyReportService.today()).thenReturn(today);
+        // 第一天 0.0 / 第二天 0.85 / 第三天 1.0
+        double[] rates = {0.0, 0.85, 1.0};
+        java.util.concurrent.atomic.AtomicInteger callIdx = new java.util.concurrent.atomic.AtomicInteger();
+        when(dailyReportService.daily(anyLong(), any()))
+                .thenAnswer(inv -> stubPayload(rates[callIdx.getAndIncrement()],
+                        0L, BigDecimal.ZERO));
+
+        var resp = service.range(1L, 3);
+
+        var taskPoints = resp.series().get("task").points();
+        assertThat(taskPoints).hasSize(3);
+        // 第一天 rate=0.0
+        assertThat(taskPoints.get(0).date()).isEqualTo(today.minusDays(2));
+        assertThat(taskPoints.get(0).value()).isEqualTo(0.0);
+        assertThat(taskPoints.get(0).label()).isEqualTo("0%");
+        // 第二天 rate=0.85 → 85%
+        assertThat(taskPoints.get(1).value()).isEqualTo(0.85);
+        assertThat(taskPoints.get(1).label()).isEqualTo("85%");
+        // 第三天 rate=1.0 → 100%
+        assertThat(taskPoints.get(2).value()).isEqualTo(1.0);
+        assertThat(taskPoints.get(2).label()).isEqualTo("100%");
+    }
+
     /** 构造固定指标的 payload（mapper 调用 stub 用）。 */
     private static DailyReportPayload stubPayload(double completionRate,
                                                   long eventCount,
