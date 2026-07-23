@@ -28,12 +28,14 @@ import 'dayjs/plugin/isoWeek';
 import isoWeek from 'dayjs/plugin/isoWeek';
 // isoWeek 插件仅本视图用到，局部 extend 避免污染全局 utils/time.ts
 dayjs.extend(isoWeek);
-import { ElButton, ElEmpty, ElRow, ElCol, ElSkeleton } from 'element-plus';
+import { ElButton, ElRow, ElCol, ElSkeleton } from 'element-plus';
 import TopBar from '@/components/TopBar.vue';
 import TaskMetricsCard from '@/components/daily/TaskMetricsCard.vue';
 import PlanMetricsCard from '@/components/daily/PlanMetricsCard.vue';
 import ExpenseMetricsCard from '@/components/daily/ExpenseMetricsCard.vue';
 import DietMetricsCard from '@/components/daily/DietMetricsCard.vue';
+import TriStateEmpty from '@/components/TriStateEmpty.vue';
+import TriStateError from '@/components/TriStateError.vue';
 import { useDailyStore } from '@/stores/daily';
 
 const store = useDailyStore();
@@ -264,34 +266,17 @@ function formatIntDelta(delta: number | null): string {
         </section>
       </template>
 
-      <div
+      <TriStateError
         v-else-if="store.error"
-        class="daily-view__error"
-        data-testid="daily-view-error"
-      >
-        <ElEmpty
-          :description="'暂时无法获取日报数据，请稍后重试'"
-          data-testid="daily-view-error-description"
-        >
-          <template #image>
-            <div class="daily-view__error-icon">⚠️</div>
-          </template>
-          <template #default>
-            <ElButton
-              type="primary"
-              data-testid="daily-view-error-retry"
-              @click="onRetry"
-            >
-              重试
-            </ElButton>
-          </template>
-        </ElEmpty>
-      </div>
+        test-id="daily-view-error"
+        description="暂时无法获取日报数据，请稍后重试"
+        @retry="onRetry"
+      />
 
-      <ElEmpty
+      <TriStateEmpty
         v-else
+        test-id="daily-view-empty"
         description="暂无日报数据，请稍后重试"
-        data-testid="daily-view-empty"
       />
     </main>
   </div>
@@ -417,16 +402,6 @@ function formatIntDelta(delta: number | null): string {
   padding: 24px;
 }
 
-/* v1.2.5 #3：错误态容器 — ElEmpty 自带 padding 不重复；居中放图标 + 文案 + 重试 */
-.daily-view__error {
-  background: #fff;
-  border-radius: 8px;
-  padding: 24px;
-  text-align: center;
-}
-.daily-view__error-icon {
-  font-size: 48px;
-  line-height: 1;
-  margin-bottom: 8px;
-}
+/* v1.2.6 #4.2：错误态容器样式迁移到 TriStateError；本视图不再持有
+   .daily-view__error / .daily-view__error-icon 等私有样式。 */
 </style>

@@ -212,10 +212,9 @@ describe('DailyView — 错误处理', () => {
 
     const errorState = w.find('[data-testid="daily-view-error"]');
     expect(errorState.exists()).toBe(true);
-    // 文案应避免直接透出 "temporarily unavailable" 这类英文技术细节
-    const desc = w.find('[data-testid="daily-view-error-description"]');
-    expect(desc.exists()).toBe(true);
-    expect(desc.text()).toContain('暂时无法获取日报数据');
+    // 文案应避免直接透出 "temporarily unavailable" 这类英文技术细节；
+    // v1.2.6 #4.2：description 由 TriStateError 渲染，文案存在于容器内即可
+    expect(errorState.text()).toContain('暂时无法获取日报数据');
     // 提供重试入口
     const retry = w.find('[data-testid="daily-view-error-retry"]');
     expect(retry.exists()).toBe(true);
