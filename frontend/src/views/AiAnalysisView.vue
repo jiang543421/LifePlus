@@ -24,10 +24,10 @@
       <ElSkeleton :rows="6" animated />
     </div>
 
-    <ElEmpty
+    <TriStateEmpty
       v-else-if="!store.insight"
+      test-id="ai-analysis-empty"
       description="暂无分析数据，请点击刷新重试"
-      data-testid="ai-analysis-empty"
     />
 
     <template v-else>
@@ -104,7 +104,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { ElButton, ElSkeleton, ElEmpty, ElTag, ElAlert } from 'element-plus';
+import { ElButton, ElSkeleton, ElTag, ElAlert } from 'element-plus';
+import TriStateEmpty from '@/components/TriStateEmpty.vue';
 import { useAiInsightStore } from '@/stores/aiInsight';
 import type { Mood } from '@/types';
 
