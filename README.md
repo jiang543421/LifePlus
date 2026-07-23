@@ -149,11 +149,14 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 - MVP1（✅）：邮箱+密码认证、任务、计划、首页 6 卡
 - MVP2 第一阶段 v1.2.1（✅）：消费 expense
 - MVP2 第二阶段 v1.2.2（✅）：饮食 diet
-- MVP2 第三阶段 v1.2.3（✅ 部分）：日报 daily 后端能力（前端接入留待 v1.2.4）
+- MVP2 第三阶段 v1.2.3（✅）：日报 daily 后端能力（聚合端点 + 周报对照）
+- **日报前端接入 v1.2.4（✅ 已落地）**：DailyView 接入 v1.2.3 后端 + 4 张指标卡 + 周报 triplet + URL ?date / ?week 双向绑定；前端骨架屏 / 错误态 / 重试随 v1.2.5 + v1.2.6 收口（详见 [RELEASES/v1.2.5.md](RELEASES/v1.2.5.md) §2.3 + [RELEASES/v1.2.6.md](RELEASES/v1.2.6.md) §2.5）。
+- **设置页 actions v1.1（✅ 已发布）**：`PATCH /users/me`（改昵称 10/min/userId）+ `POST /users/me/password`（旧+新 + 撤销 refresh 5/min/userId）+ `DELETE /users/me`（软删 + 撤销 refresh 3/min/userId）；前端 SettingsView 三卡片 + 跨用户越权 1003 拦截。详见 `docs/issues/2026-07-18-settings-v1-1.md`（commit `5b88dd2` / `e081557` / `44f092f` / `+本文件`）。
 - **AI 分析 v2.0 v2.0.0-ai（✅ 已发布）**：5 个 Provider（Task/Plan/Expense/Diet/Daily stub）+ Redis 缓存 30min + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST） + 前端首页 AI 卡激活（抽屉 + Toast）。详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md) + [2026-07-21-ai-v2-design.md §18](docs/superpowers/specs/2026-07-21-ai-v2-design.md)。
+- **AI 分析 v2.1 v2.1.0-ai（✅ 已发布）**：独立分析页（`AiAnalysisView` 4 段：headline / advice / highlight / chips）+ 抽屉 L1/L2 降级链路（CLAUDE.md §11.3）+ DeepSeek / Ollama 双 Provider + Redis 缓存 6h + 配额 50/user/day + 熔断 10/5min。详见 [RELEASES/v2.1.0-ai.md](RELEASES/v2.1.0-ai.md)。
 - **UX 体验优化 v1.2.5（✅ 已发布）**：AiDrawer 首次加载 skeleton + AI 角标 hover tooltip（LLM 智能生成 vs 模板降级语义）+ DailyView 错误态友好提示（图标 + 文案 + 重试按钮）。详见 [RELEASES/v1.2.5.md](RELEASES/v1.2.5.md)。
 - **UX 体验优化 v1.2.6（✅ 已发布）**：把 v1.2.5 验证过的「loading skeleton + 空态 + 错误态可恢复」三态模式从 DailyView / AiDrawer 扩散到全站高频视图 — TaskListView / PlanCalendarView / ExpenseView 新增 loading skeleton；TaskListView / PlanCalendarView / ExpenseView / DietView 新增「首次加载失败 + list===null → 重试」错误态；抽取 `TriStateEmpty` + `TriStateError` 两个共享组件；新增 `--tri-state-loading-bg` / `--tri-state-loading-radius` 两枚设计 token。详见 [RELEASES/v1.2.6.md](RELEASES/v1.2.6.md)。
-- 后续：日报前端 v1.2.4、AI v2.1（独立分析页 + 趋势图）、设置页 actions v1.1
+- 后续候选：AI v2.1 趋势图（spec 提及，独立分析页已落地的扩展项）、Entity immutability 全局重构（CLAUDE.md §4.1 硬约束收紧期收口 `UserService.setXxx()` 等 mutation 模式）
 
 ---
 
