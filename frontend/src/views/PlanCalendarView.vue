@@ -11,6 +11,8 @@ import { PlanAllDayValue } from '@/types';
 import type { PlanCreateRequest, PlanListItem, PlanUpdateRequest } from '@/types';
 import CalendarMonth from '@/components/CalendarMonth.vue';
 import EventDialog from '@/components/EventDialog.vue';
+import TriStateEmpty from '@/components/TriStateEmpty.vue';
+import TriStateError from '@/components/TriStateError.vue';
 
 /**
  * 日历主页（spec §04 §5 + PRD PLAN-1/PLAN-2）。
@@ -39,6 +41,11 @@ async function loadMonth(): Promise<void> {
   store.setPage(1, MONTH_QUERY_SIZE);
   const resp = await store.fetchList();
   if (!resp && store.errorCode) showAuthError(store.errorCode);
+}
+
+/** v1.2.6 #4.5：错误态「重试」按钮 → 直接复用 loadMonth（与 DailyView 同款）。 */
+function onRetry(): void {
+  void loadMonth();
 }
 
 onMounted(loadMonth);
@@ -145,6 +152,13 @@ function timeLabel(ev: PlanListItem): string {
         </div>
       </div>
     </template>
+    <!-- v1.2.6 #4.5：错误态（首次加载失败 + list===null）→ TriStateError 重试。 -->
+    <TriStateError
+      v-else-if="store.error && store.list === null"
+      test-id="plan-calendar-error"
+      description="暂时无法获取日程数据，请稍后重试"
+      @retry="onRetry"
+    />
     <template v-else>
       <CalendarMonth
         :year="year"
@@ -159,9 +173,11 @@ function timeLabel(ev: PlanListItem): string {
 
       <section class="day-panel" data-testid="day-panel">
         <h2 class="day-title">{{ selectedDate }} 的事件</h2>
-        <div v-if="selectedEvents.length === 0" class="state empty" data-testid="day-empty">
-          当天没有事件
-        </div>
+        <TriStateEmpty
+          v-if="selectedEvents.length === 0"
+          test-id="day-empty"
+          description="当天没有事件"
+        />
         <ul v-else class="event-list" data-testid="event-list">
           <li
             v-for="ev in selectedEvents"
@@ -209,11 +225,6 @@ function timeLabel(ev: PlanListItem): string {
 .header h1 {
   margin: 0;
   font-size: 22px;
-}
-.state {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--el-text-color-secondary);
 }
 .day-panel {
   margin-top: 24px;

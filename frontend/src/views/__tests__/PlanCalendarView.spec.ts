@@ -248,3 +248,62 @@ describe('PlanCalendarView / 新建事件', () => {
     expect(w.find('[data-testid="calendar-month"]').exists()).toBe(true);
   });
 });
+
+// v1.2.6 #4.5：错误态（fetchList 首次失败 + list===null）
+describe('PlanCalendarView / 错误态', () => {
+  it('fetchList 失败 + list===null + !loading → 渲染 plan-calendar-error + 重试按钮', async () => {
+    vi.mocked(planApi.list).mockRejectedValue(new ApiError(1003, '无权操作'));
+    const w = await mountView();
+    await flushPromises();
+
+    const store = usePlanStore();
+    expect(store.error).not.toBeNull();
+    expect(store.list).toBeNull();
+
+    const errorBox = w.find('[data-testid="plan-calendar-error"]');
+    expect(errorBox.exists()).toBe(true);
+    expect(errorBox.text()).toContain('暂时无法获取日程数据');
+    const retry = w.find('[data-testid="plan-calendar-error-retry"]');
+    expect(retry.exists()).toBe(true);
+  });
+
+  it('点击错误态「重试」→ 重新调 planApi.list', async () => {
+    vi.mocked(planApi.list).mockRejectedValueOnce(new ApiError(1003, '无权操作'));
+    vi.mocked(planApi.list).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: MONTH_QUERY_SIZE });
+    const w = await mountView();
+    await flushPromises();
+
+    const before = vi.mocked(planApi.list).mock.calls.length;
+    await w.find('[data-testid="plan-calendar-error-retry"]').trigger('click');
+    await flushPromises();
+
+    expect(vi.mocked(planApi.list).mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it('error + list 已有 → 不渲染错误态（refresh 阶段保留日历）', async () => {
+    // 首次加载成功
+    vi.mocked(planApi.list).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: MONTH_QUERY_SIZE });
+    const w = await mountView();
+    await flushPromises();
+    const store = usePlanStore();
+    expect(store.list).not.toBeNull();
+
+    // 模拟 refresh 失败：list 保留 + error 写入
+    store.$patch({ error: '...', errorCode: 1003, loading: false });
+    await flushPromises();
+
+    expect(w.find('[data-testid="plan-calendar-error"]').exists()).toBe(false);
+    expect(w.find('[data-testid="calendar-month"]').exists()).toBe(true);
+  });
+
+  it('day-panel 空态迁移：selectedEvents=[] 时渲染 day-empty TriStateEmpty', async () => {
+    vi.mocked(planApi.list).mockResolvedValue({ items: [], total: 0, page: 1, size: MONTH_QUERY_SIZE });
+    const w = await mountView();
+    await flushPromises();
+    await w.find('[data-date]').trigger('click');
+    await flushPromises();
+    const empty = w.find('[data-testid="day-empty"]');
+    expect(empty.exists()).toBe(true);
+    expect(empty.text()).toContain('当天没有事件');
+  });
+});
