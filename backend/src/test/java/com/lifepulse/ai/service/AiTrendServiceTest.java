@@ -19,6 +19,7 @@ import com.lifepulse.daily.TaskMetrics;
 import com.lifepulse.daily.service.DailyReportService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -104,6 +105,35 @@ class AiTrendServiceTest {
         assertThat(resp.window()).isEqualTo(windowDays);
         assertThat(resp.series().get("task").points().get(0).date()).isEqualTo(resp.from());
         assertThat(resp.series().get("task").points().get(windowDays - 1).date()).isEqualTo(resp.to());
+    }
+
+    /**
+     * Case 4：diet 占位独立性 — 即便 stub 返回带 enabled=true 的 DietMetrics，
+     * 响应里 diet 槽位永远空数组 + 占位 label（CLAUDE.md §1 NOT-DO）。
+     */
+    @Test
+    void range_dietSlotAlwaysEmpty_andLabelIsPlaceholder_regardlessOfStub() {
+        LocalDate today = LocalDate.of(2026, 7, 23);
+        when(dailyReportService.today()).thenReturn(today);
+        // 即使 DietMetrics.enabled=true 也不应被采纳
+        DietMetrics enabledDiet = new DietMetrics(true, null, "ignored");
+        when(dailyReportService.daily(anyLong(), any()))
+                .thenReturn(new DailyReportPayload(
+                        LocalDate.of(2026, 7, 20),
+                        new TaskMetrics(5, 10, 0.5, Map.of(), Map.of()),
+                        new PlanMetrics(2L, 60L, Map.of(), 5),
+                        new ExpenseMetrics(new BigDecimal("10.00"), 1L, Map.of(), List.of()),
+                        enabledDiet));
+
+        var resp = service.range(1L, 14);
+
+        // diet 槽位存在但永远空 + 占位 label
+        assertThat(resp.series()).containsKey("diet");
+        assertThat(resp.series().get("diet").points()).isEmpty();
+        assertThat(resp.series().get("diet").label()).isEqualTo("饮食（永久占位）");
+        assertThat(resp.series().get("diet").key()).isEqualTo("diet");
+        // 其它 3 个 series 仍正常填点
+        assertThat(resp.series().get("task").points()).hasSize(14);
     }
 
     /** 构造固定指标的 payload（mapper 调用 stub 用）。 */
