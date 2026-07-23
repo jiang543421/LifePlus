@@ -194,6 +194,37 @@ class AiTrendServiceTest {
         assertThat(planPoints.get(2).label()).isEqualTo("12项");
     }
 
+    /**
+     * Case 7：expense 字段映射 — value=amount（double，HALF_UP 2 位小数），
+     * label="¥{amount.toPlainString}"（保留原始小数位）。
+     */
+    @Test
+    void range_expenseSeries_mapsAmountToValueAndYuanLabel() {
+        LocalDate today = LocalDate.of(2026, 7, 23);
+        when(dailyReportService.today()).thenReturn(today);
+        BigDecimal[] amounts = {
+                new BigDecimal("0.00"),
+                new BigDecimal("42.50"),
+                new BigDecimal("1234.56")
+        };
+        java.util.concurrent.atomic.AtomicInteger callIdx = new java.util.concurrent.atomic.AtomicInteger();
+        when(dailyReportService.daily(anyLong(), any()))
+                .thenAnswer(inv -> stubPayload(0.0, 0L, amounts[callIdx.getAndIncrement()]));
+
+        var resp = service.range(1L, 3);
+
+        var expensePoints = resp.series().get("expense").points();
+        assertThat(expensePoints).hasSize(3);
+        // 0 元也要出点
+        assertThat(expensePoints.get(0).value()).isEqualTo(0.00);
+        assertThat(expensePoints.get(0).label()).isEqualTo("¥0.00");
+        assertThat(expensePoints.get(1).value()).isEqualTo(42.50);
+        assertThat(expensePoints.get(1).label()).isEqualTo("¥42.50");
+        // 4 位金额：HALF_UP 2 位 → 1234.56
+        assertThat(expensePoints.get(2).value()).isEqualTo(1234.56);
+        assertThat(expensePoints.get(2).label()).isEqualTo("¥1234.56");
+    }
+
     /** 构造固定指标的 payload（mapper 调用 stub 用）。 */
     private static DailyReportPayload stubPayload(double completionRate,
                                                   long eventCount,
