@@ -18,6 +18,7 @@ import com.lifepulse.daily.PlanMetrics;
 import com.lifepulse.daily.TaskMetrics;
 import com.lifepulse.daily.service.DailyReportService;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -223,6 +224,24 @@ class AiTrendServiceTest {
         // 4 位金额：HALF_UP 2 位 → 1234.56
         assertThat(expensePoints.get(2).value()).isEqualTo(1234.56);
         assertThat(expensePoints.get(2).label()).isEqualTo("¥1234.56");
+    }
+
+    /**
+     * Case 8：generatedAt 自动填当前时间（不晚于 service 调完时刻）。
+     */
+    @Test
+    void range_generatedAt_isCurrentInstant_closeToNow() throws InterruptedException {
+        LocalDate today = LocalDate.of(2026, 7, 23);
+        when(dailyReportService.today()).thenReturn(today);
+        when(dailyReportService.daily(anyLong(), any()))
+                .thenReturn(stubPayload(0.5, 1L, new BigDecimal("10.00")));
+
+        Instant before = Instant.now();
+        var resp = service.range(1L, 7);
+        Instant after = Instant.now();
+
+        assertThat(resp.generatedAt()).isAfterOrEqualTo(before);
+        assertThat(resp.generatedAt()).isBeforeOrEqualTo(after);
     }
 
     /** 构造固定指标的 payload（mapper 调用 stub 用）。 */
