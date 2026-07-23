@@ -87,6 +87,12 @@
           </div>
         </section>
 
+        <!-- v2.2 trend：趋势图段（spec §v2.2 trend / CLAUDE.md §11.1 无新表） -->
+        <section class="section trend" data-testid="ai-analysis-trend" aria-label="趋势">
+          <h3>趋势</h3>
+          <TrendPanel />
+        </section>
+
         <!-- template 降级提示 -->
         <ElAlert
           v-if="insight.source === 'template'"
@@ -106,6 +112,7 @@
 import { computed, onMounted } from 'vue';
 import { ElButton, ElSkeleton, ElTag, ElAlert } from 'element-plus';
 import TriStateEmpty from '@/components/TriStateEmpty.vue';
+import TrendPanel from '@/components/ai/TrendPanel.vue';
 import { useAiInsightStore } from '@/stores/aiInsight';
 import type { Mood } from '@/types';
 

@@ -1,9 +1,10 @@
 package com.lifepulse.ai;
 
 import java.time.Duration;
+import java.util.Set;
 
 /**
- * AI 模块全局常量（spec §6.1 / §6.3 / §8）。
+ * AI 模块全局常量（spec §6.1 / §6.3 / §8 / v2.2 §trend）。
  *
  * <p>所有魔法数字、键名集中在此，便于 review 与未来重构。
  */
@@ -51,6 +52,30 @@ public final class AiConstants {
 
     /** AI 洞察限流 Redis key 前缀：完整 key {@code lp:rl:ai:insight:<userId>}。 */
     public static final String INSIGHT_RL_KEY_PREFIX = "lp:rl:ai:insight:";
+
+    // ===== v2.2 trend 扩展（spec §v2.2 trend / CLAUDE.md §11.4） =====
+
+    /**
+     * Trend 缓存键前缀：完整 key {@code lp:ai:trend:<userId>:<windowDays>}。
+     * 按 userId + window 分桶，避免 7/14/30 三档互相覆盖。
+     */
+    public static final String TREND_CACHE_KEY_PREFIX = "lp:ai:trend:";
+
+    /** Trend 缓存 TTL 6h（与 insight 同档，CLAUDE.md §11.4 / spec §9.1）。 */
+    public static final long TREND_CACHE_TTL_SECONDS = 6L * 60 * 60;
+
+    /** Trend 限流 Redis key 前缀：完整 key {@code lp:rl:ai:trend:<userId>}。 */
+    public static final String TREND_RL_KEY_PREFIX = "lp:rl:ai:trend:";
+
+    /** Trend GET 端点限流：30/min/user（CLAUDE.md §11.5）。 */
+    public static final int TREND_RL_MAX = 30;
+    public static final Duration TREND_RL_WINDOW = Duration.ofMinutes(1);
+
+    /** Trend 支持的窗口档位（7 / 14 / 30 三档）。 */
+    public static final Set<Integer> TREND_WINDOWS = Set.of(7, 14, 30);
+
+    /** Trend 默认窗口（14 天档 = v2.0 周报档）。 */
+    public static final int TREND_DEFAULT_WINDOW = 14;
 
     private AiConstants() {
         // 静态工具类，禁止实例化

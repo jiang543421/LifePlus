@@ -1,6 +1,6 @@
 # LifePulse
 
-> 个人多用户「数字生活」仪表盘 MVP1 — 邮箱+密码认证、任务 TODO、日历计划事件、首页 6 卡、**AI 分析 v2.1 LLM 增强**（tag `v2.1.0-ai` 发布中；前序 `v2.0.0-ai` 为 v2.0 智能卡 + 抽屉底座）。
+> 个人多用户「数字生活」仪表盘 MVP1 — 邮箱+密码认证、任务 TODO、日历计划事件、首页 6 卡、**AI 分析 v2.2 趋势图**（tag `v2.2.0-ai-trend` 发布中；前序 `v2.1.0-ai` 为 LLM 增强 + 独立分析页）。
 
 ## 1. 快速上手
 
@@ -132,6 +132,7 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 
 | Tag | Date | 模块 / 摘要 |
 |-----|------|------------|
+| [v2.2.0-ai-trend](RELEASES/v2.2.0-ai-trend.md) | 2026-07-23 | AI 趋势图 v2.2：`/ai-analysis` 追加「趋势」段（4 槽 2×2 网格：task 任务完成率 / plan 日程事件 / expense 消费金额 / diet 永久占位），7/14/30 天窗口切换 + URL 同步 + Redis 6h 缓存 + 30/min/user 限流；`SparklineChart.vue` 手写 inline SVG（0 新依赖），窗口分桶 store（无 schema 变更） |
 | [v1.2.6](RELEASES/v1.2.6.md) | 2026-07-23 | UX 体验优化（三态模式扩散）：3 处 loading skeleton（TaskListView / PlanCalendarView / ExpenseView）+ TriStateEmpty + TriStateError 共享组件 + 7 个 view 空态 / 错误态迁移 + 2 枚三态设计 token（无依赖变更 / 无 schema 变更） |
 | [v1.2.5](RELEASES/v1.2.5.md) | 2026-07-23 | UX 体验优化：AiDrawer loading skeleton + AI 角标 hover tooltip + DailyView 错误态 + 重试按钮（无依赖变更 / 无 schema 变更） |
 | [v2.0.0-ai](RELEASES/v2.0.0-ai.md) | 2026-07-22 | MVP2 第四阶段：AI 分析 v2.0（智能卡 + 详情抽屉；5 Provider 聚合） |
@@ -140,9 +141,9 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 | [v1.2.1](RELEASES/v1.2.1.md) | 2026-07-20 | MVP2 第一阶段：消费（expense）模块 |
 | [v1.0.0-mvp](RELEASES/v1.0.0-mvp.md) | 2026-07-15 | MVP1 首个 release：邮箱+密码认证、任务、计划、首页 6 卡 |
 
-> 最新发布：`v1.2.6`（annotated tag @ `main` `4d3d65c` + release notes commit `pending`）— UX 优化 11 处（3 skeleton + 4 错误态 + 2 共享组件 + 2 token），详见 [RELEASES/v1.2.6.md](RELEASES/v1.2.6.md)。
+> 最新发布：`v2.2.0-ai-trend`（annotated tag @ `feat/ai-trend-chart` squash merge）— AI 趋势图（4 槽 7/14/30 天 + 窗口分桶 + URL 同步 + Redis 6h 缓存 + 30/min/user 限流），详见 [RELEASES/v2.2.0-ai-trend.md](RELEASES/v2.2.0-ai-trend.md)。
 >
-> 上一稳定版：`v1.2.5`（annotated tag @ `main` `08be097` + release notes commit `5f0f0ae`）— UX 优化 3 处（AiDrawer skeleton + AI tooltip + DailyView 错误态），详见 [RELEASES/v1.2.5.md](RELEASES/v1.2.5.md)。
+> 上一稳定版：`v2.1.0-ai`（annotated tag @ `main` `4d81aa5`）— 独立分析页 + LLM 增强 + 3 层降级链路，详见 [RELEASES/v2.1.0-ai.md](RELEASES/v2.1.0-ai.md)。
 
 ## 8. 路线图
 
@@ -154,9 +155,10 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 - **设置页 actions v1.1（✅ 已发布）**：`PATCH /users/me`（改昵称 10/min/userId）+ `POST /users/me/password`（旧+新 + 撤销 refresh 5/min/userId）+ `DELETE /users/me`（软删 + 撤销 refresh 3/min/userId）；前端 SettingsView 三卡片 + 跨用户越权 1003 拦截。详见 `docs/issues/2026-07-18-settings-v1-1.md`（commit `5b88dd2` / `e081557` / `44f092f` / `+本文件`）。
 - **AI 分析 v2.0 v2.0.0-ai（✅ 已发布）**：5 个 Provider（Task/Plan/Expense/Diet/Daily stub）+ Redis 缓存 30min + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST） + 前端首页 AI 卡激活（抽屉 + Toast）。详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md) + [2026-07-21-ai-v2-design.md §18](docs/superpowers/specs/2026-07-21-ai-v2-design.md)。
 - **AI 分析 v2.1 v2.1.0-ai（✅ 已发布）**：独立分析页（`AiAnalysisView` 4 段：headline / advice / highlight / chips）+ 抽屉 L1/L2 降级链路（CLAUDE.md §11.3）+ DeepSeek / Ollama 双 Provider + Redis 缓存 6h + 配额 50/user/day + 熔断 10/5min。详见 [RELEASES/v2.1.0-ai.md](RELEASES/v2.1.0-ai.md)。
+- **AI 趋势图 v2.2 v2.2.0-ai-trend（✅ 已发布）**：`/ai-analysis` 追加「趋势」段（4 槽 2×2 网格：task / plan / expense / diet）+ 7/14/30 天窗口切换 + URL `?window=N` 同步 + 窗口分桶 store + Redis 6h 缓存 + 30/min/user 限流；`SparklineChart.vue` 手写 inline SVG（0 新依赖）；CLAUDE.md §11.1 硬约束（无新表 / 不改字段 / 不引入新依赖）。详见 [RELEASES/v2.2.0-ai-trend.md](RELEASES/v2.2.0-ai-trend.md) + [docs/specs/10-ai-v2-2-trend-design.md](docs/specs/10-ai-v2-2-trend-design.md)。
 - **UX 体验优化 v1.2.5（✅ 已发布）**：AiDrawer 首次加载 skeleton + AI 角标 hover tooltip（LLM 智能生成 vs 模板降级语义）+ DailyView 错误态友好提示（图标 + 文案 + 重试按钮）。详见 [RELEASES/v1.2.5.md](RELEASES/v1.2.5.md)。
 - **UX 体验优化 v1.2.6（✅ 已发布）**：把 v1.2.5 验证过的「loading skeleton + 空态 + 错误态可恢复」三态模式从 DailyView / AiDrawer 扩散到全站高频视图 — TaskListView / PlanCalendarView / ExpenseView 新增 loading skeleton；TaskListView / PlanCalendarView / ExpenseView / DietView 新增「首次加载失败 + list===null → 重试」错误态；抽取 `TriStateEmpty` + `TriStateError` 两个共享组件；新增 `--tri-state-loading-bg` / `--tri-state-loading-radius` 两枚设计 token。详见 [RELEASES/v1.2.6.md](RELEASES/v1.2.6.md)。
-- 后续候选：AI v2.1 趋势图（spec 提及，独立分析页已落地的扩展项）、Entity immutability 全局重构（CLAUDE.md §4.1 硬约束收紧期收口 `UserService.setXxx()` 等 mutation 模式）
+- 后续候选：趋势图同环比 / 趋势对比（v2.3+ 评估；v2.2 仅绝对值折线）、Entity immutability 全局重构（CLAUDE.md §4.1 硬约束收紧期收口 `UserService.setXxx()` 等 mutation 模式）
 
 ---
 
