@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.gitignore
+.dockerignore
+.vscode
+.idea
+coverage
+playwright-report
+test-results
+*.log
+.DS_Store
+Thumbs.db
