@@ -376,13 +376,14 @@ docs(readme): document seed account and env vars
 | `CONTRIBUTING.md` | 分支命名 / commit message / TDD 节奏 |
 | `docs/superpowers/specs/2026-07-15-lifepulse-mvp1-design.md` | MVP1 设计索引 |
 | `docs/superpowers/specs/2026-07-21-ai-v2-design.md` | AI v2.0 设计索引（已发布，tag `v2.0.0-ai`）|
-| `docs/superpowers/specs/2026-07-22-ai-v2-1-llm-design.md` | AI v2.1 LLM 增强设计（在分支 `feat/ai-llm-v2.1`）|
+| `docs/superpowers/specs/2026-07-22-ai-v2-1-llm-design.md` | AI v2.1 LLM 增强设计（已发布于 main via PR #18 squash merge `2aa2f53`，tag `v2.1.0-ai`）|
 | `docs/specs/01-architecture..05-nfr-testing.md` | MVP1 设计拆分（编码按需读取）|
 | `docs/specs/06-expense-design.md` ~ `08-daily-report-design.md` | MVP2 / v1.2 模块设计 |
 | `docs/specs/09-ai-llm-data-model.md` | AI v2.1 数据模型（Java 类 + Redis 键）|
 | `docs/ui-prototypes/00-index.md` + `01..08-*.md` | UI 原型（桌面 + 移动端 ASCII）|
 | `docs/prd/00-index.md` + `01..07-*.md` | 产品 PRD（KANO / RICE / 用户故事）|
 | `docs/superpowers/plans/2026-07-15-lifepulse-mvp1.md` | 实施计划 |
+| `RELEASES/v1.2.5.md` | 纯前端 UX 体验优化 release（AiDrawer skeleton + AI 角标 tooltip + DailyView 错误态；tag `v1.2.5` @ `08be097`，2026-07-23 发布）|
 
 ---
 
