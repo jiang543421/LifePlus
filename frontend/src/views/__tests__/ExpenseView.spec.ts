@@ -364,3 +364,58 @@ describe('ExpenseView / loading skeleton', () => {
     expect(w.find('[data-testid="expense-pagination"]').exists()).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------
+// v1.2.6 #4.6：错误态（fetchList/fetchSummary 首次失败 + list===null）
+// ---------------------------------------------------------------
+describe('ExpenseView / 错误态', () => {
+  it('fetchList 失败 + list===null + !loading → 渲染 expense-view-error + 重试按钮', async () => {
+    vi.mocked(expenseApi.list).mockRejectedValue(new ApiError(1003, '无权操作'));
+    const w = await mountView();
+    await flushPromises();
+
+    const store = useExpenseStore();
+    expect(store.error).not.toBeNull();
+    expect(store.list).toBeNull();
+
+    const errorBox = w.find('[data-testid="expense-view-error"]');
+    expect(errorBox.exists()).toBe(true);
+    expect(errorBox.text()).toContain('暂时无法获取消费记录');
+    const retry = w.find('[data-testid="expense-view-error-retry"]');
+    expect(retry.exists()).toBe(true);
+  });
+
+  it('点击错误态「重试」→ 重新调 expenseApi.list + summary', async () => {
+    vi.mocked(expenseApi.list).mockRejectedValueOnce(new ApiError(1003, '无权操作'));
+    vi.mocked(expenseApi.summary).mockRejectedValueOnce(new ApiError(1003, '无权操作'));
+    vi.mocked(expenseApi.list).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: 20 });
+    vi.mocked(expenseApi.summary).mockResolvedValueOnce(sampleSummary);
+
+    const w = await mountView();
+    await flushPromises();
+
+    const beforeList = vi.mocked(expenseApi.list).mock.calls.length;
+    const beforeSummary = vi.mocked(expenseApi.summary).mock.calls.length;
+    await w.find('[data-testid="expense-view-error-retry"]').trigger('click');
+    await flushPromises();
+
+    expect(vi.mocked(expenseApi.list).mock.calls.length).toBeGreaterThan(beforeList);
+    expect(vi.mocked(expenseApi.summary).mock.calls.length).toBeGreaterThan(beforeSummary);
+  });
+
+  it('error + list 已有 → 不渲染错误态（refresh 阶段保留旧 ExpenseList）', async () => {
+    // 首次加载成功
+    vi.mocked(expenseApi.list).mockResolvedValueOnce({ items: sampleList, total: sampleList.length, page: 1, size: 20 });
+    const w = await mountView();
+    await flushPromises();
+    const store = useExpenseStore();
+    expect(store.list).not.toBeNull();
+
+    // 模拟 refresh 失败：list 保留 + error 写入
+    store.$patch({ error: '...', errorCode: 1003, loading: false });
+    await flushPromises();
+
+    expect(w.find('[data-testid="expense-view-error"]').exists()).toBe(false);
+    expect(w.findComponent(ExpenseList).exists()).toBe(true);
+  });
+});

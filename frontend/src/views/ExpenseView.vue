@@ -46,6 +46,7 @@ import {
 import ExpenseList from '@/components/ExpenseList.vue';
 import ExpenseSummaryCard from '@/components/ExpenseSummaryCard.vue';
 import ExpenseDialog from '@/components/ExpenseDialog.vue';
+import TriStateError from '@/components/TriStateError.vue';
 
 const store = useExpenseStore();
 
@@ -70,6 +71,11 @@ async function refreshList(): Promise<void> {
   if (result === null && store.errorCode !== null) {
     showAuthError(store.errorCode);
   }
+}
+
+/** v1.2.6 #4.6：错误态「重试」按钮 → 同时重拉 list + summary。 */
+async function onRetry(): Promise<void> {
+  await Promise.all([refreshList(), refreshSummary()]);
 }
 
 async function refreshSummary(): Promise<void> {
@@ -233,6 +239,13 @@ defineExpose({
             </div>
           </div>
         </div>
+        <!-- v1.2.6 #4.6：错误态（首次加载失败 + list===null）→ TriStateError 重试。 -->
+        <TriStateError
+          v-else-if="store.error && store.list === null"
+          test-id="expense-view-error"
+          description="暂时无法获取消费记录，请稍后重试"
+          @retry="onRetry"
+        />
         <template v-else>
           <ExpenseList
             :items="store.list ?? []"

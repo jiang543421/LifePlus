@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import ExpenseListItem from './ExpenseListItem.vue';
+import TriStateEmpty from './TriStateEmpty.vue';
 import type { ExpenseListItem as ExpenseListItemT } from '@/types';
 
 dayjs.locale('zh-cn');
@@ -33,13 +34,11 @@ const grouped = computed<Array<{ day: string; items: ExpenseListItemT[] }>>(() =
 
 <template>
   <div class="expense-list" data-testid="expense-list">
-    <div
+    <TriStateEmpty
       v-if="items.length === 0"
-      class="expense-list__empty"
-      data-testid="expense-list-empty"
-    >
-      暂无消费记录
-    </div>
+      test-id="expense-list-empty"
+      description="暂无消费记录"
+    />
     <template v-else>
       <div
         v-for="g in grouped"
@@ -66,12 +65,6 @@ const grouped = computed<Array<{ day: string; items: ExpenseListItemT[] }>>(() =
 .expense-list {
   display: flex;
   flex-direction: column;
-}
-.expense-list__empty {
-  padding: 48px 0;
-  text-align: center;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
 }
 .day-group {
   background: #fff;
