@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { nextTick } from 'vue';
-import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
+import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import ElementPlus, { ElMessage } from 'element-plus';
 import HomeView from '@/views/HomeView.vue';
@@ -55,6 +55,9 @@ function mountHome(): VueWrapper {
       stubs: {
         // TopBar 含汉堡菜单 / 用户菜单链路，单元测试不依赖其内部，挂 stub。
         TopBar: true,
+        // router-link 由 ModuleCard 渲染；用 RouterLinkStub 保留 <a> 标签与 to 属性，
+        // 让模块卡的 href 断言可执行（不依赖真实 router 实例）。
+        RouterLink: RouterLinkStub,
       },
     },
   });
@@ -101,15 +104,20 @@ describe('HomeView — AI 卡集成', () => {
     expect(vm.aiInsight).toEqual(sampleInsight);
   });
 
-  it('点击非 AI 占位卡（daily）保持「即将上线」Toast，不调 aiApi', async () => {
+  it('点击日报模块卡 → 渲染 router-link（不再是 button），不调 aiApi', async () => {
     const wrapper = mountHome();
     await flushPromises();
 
-    await clickCard(wrapper, 'daily');
-    await flushPromises();
-
+    // v1.2.4 起 daily 卡升级为 module（spec §08-daily-report-design），
+    // ModuleCard 渲染 <a class="module-card">（router-link stub），
+    // 不再渲染 placeholder button，也不再触发「即将上线」toast。
+    const dailyWrap = wrapper.find('[data-testid="home-card-daily"]');
+    expect(dailyWrap.find('a.module-card').exists()).toBe(true);
+    // ModuleCard 在 module 形态下不渲染 placeholder button
+    expect(dailyWrap.find('[data-testid="module-card-placeholder"]').exists()).toBe(false);
+    // 验证 aiApi 未被调用、toast 未弹出
     expect(vi.mocked(aiApi.today)).not.toHaveBeenCalled();
-    expect(elMessageWarn).toHaveBeenCalledWith('即将上线');
+    expect(elMessageWarn).not.toHaveBeenCalled();
   });
 
   it('aiApi.today() 抛 1501 → 弹降级 Toast，drawer open 但 insight 仍为 null', async () => {

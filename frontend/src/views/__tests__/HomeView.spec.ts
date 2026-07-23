@@ -110,7 +110,7 @@ describe('HomeView', () => {
       const planLink = w.find('[data-testid="home-card-plan"] a.module-card');
       expect(planLink.attributes('href')).toBe('/plans');
 
-      // 消费 / 饮食卡均已激活为 module（expense v1.2.1、diet v1.2.2）
+      // 消费 / 饮食 / 日报 卡均已激活为 module（expense v1.2.1、diet v1.2.2、daily v1.2.4）
       const expenseLink = w.find('[data-testid="home-card-expense"] a.module-card');
       expect(expenseLink.exists()).toBe(true);
       expect(expenseLink.attributes('href')).toBe('/expenses');
@@ -118,13 +118,17 @@ describe('HomeView', () => {
       const dietLink = w.find('[data-testid="home-card-diet"] a.module-card');
       expect(dietLink.exists()).toBe(true);
       expect(dietLink.attributes('href')).toBe('/diets');
+
+      const dailyLink = w.find('[data-testid="home-card-daily"] a.module-card');
+      expect(dailyLink.exists()).toBe(true);
+      expect(dailyLink.attributes('href')).toBe('/daily');
     });
 
     it('占位卡渲染为 button（不渲染 router-link）', () => {
       const w = mountHome();
-      // 占位卡仅来自未上线的模块（日报 / AI 分析）；消费 v1.2.1 与饮食 v1.2.2 已激活为 module
+      // v1.2.4 后只剩 AI 分析占位；任务/计划/消费/饮食/日报 全部激活为 module
       const placeholderKeys = HOME_CARDS.filter((c) => c.kind === 'placeholder').map((c) => c.key);
-      expect(placeholderKeys).toHaveLength(2);
+      expect(placeholderKeys).toEqual(['ai']);
       placeholderKeys.forEach((key) => {
         const wrap = w.find(`[data-testid="home-card-${key}"]`);
         expect(wrap.exists()).toBe(true);
@@ -138,18 +142,18 @@ describe('HomeView', () => {
   });
 
   describe('占位卡点击', () => {
-    it('点击占位卡触发 ElMessage.warning，文案为「即将上线」', async () => {
+    // v1.2.4 后只剩 AI 卡占位；AI 卡点开走 openAiInsight() 抽屉入口，
+    // 不再走「即将上线」toast。AI 卡交互由 v2.1 spec 覆盖（AiDrawer 测试套件）。
+    it('点击 AI 占位卡打开 AiDrawer（v-model:show=true）', async () => {
       const w = mountHome();
-      const firstPlaceholder = HOME_CARDS.find((c) => c.kind === 'placeholder');
-      expect(firstPlaceholder).toBeDefined();
-      const btn = w.find(
-        `[data-testid="home-card-${firstPlaceholder!.key}"] button.module-card`,
-      );
-      expect(btn.exists()).toBe(true);
-      await btn.trigger('click');
+      const aiCard = w.find('[data-testid="home-card-ai"] button.module-card');
+      expect(aiCard.exists()).toBe(true);
+      await aiCard.trigger('click');
       await flushPromises();
-      expect(warningSpy).toHaveBeenCalledTimes(1);
-      expect(warningSpy).toHaveBeenCalledWith('即将上线');
+      // AiDrawer v-model:show=true 时 AiDrawer 渲染到 teleport target；
+      // drawer 存在即证明占位卡 click 走 openAiInsight 路径
+      // （不再触发 ElMessage.warning）。
+      expect(warningSpy).not.toHaveBeenCalled();
     });
   });
 });

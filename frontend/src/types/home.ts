@@ -48,6 +48,6 @@ export const HOME_CARDS: ReadonlyArray<HomeCard> = Object.freeze([
   { key: 'plan', title: '计划', icon: 'Calendar', kind: 'module', to: '/plans' },
   { key: 'expense', title: '消费', icon: 'Wallet', kind: 'module', to: '/expenses' },
   { key: 'diet', title: '饮食', icon: 'KnifeFork', kind: 'module', to: '/diets' },
-  { key: 'daily', title: '日报', icon: 'EditPen', kind: 'placeholder' },
+  { key: 'daily', title: '日报', icon: 'EditPen', kind: 'module', to: '/daily' },
   { key: 'ai', title: 'AI 分析', icon: 'DataAnalysis', kind: 'placeholder' },
 ] as const);

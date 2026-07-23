@@ -23,6 +23,8 @@ const routes: RouteRecordRaw[] = [
   // v2.1 PR3：独立 AI 分析页（spec §7.3 / CLAUDE.md §11.3）。
   // 与 Home 共享 6h Redis 缓存；需登录，由 beforeEach 统一拦截。
   { path: '/ai-analysis', name: 'ai-analysis', component: () => import('@/views/AiAnalysisView.vue'), meta: { title: 'AI 分析' } },
+  // Phase 5 #1：日报视图（spec §08-daily-report-design §7.3）；需登录。
+  { path: '/daily', name: 'daily', component: () => import('@/views/DailyView.vue'), meta: { title: '日报' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 
