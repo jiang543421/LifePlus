@@ -132,15 +132,16 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 
 | Tag | Date | 模块 / 摘要 |
 |-----|------|------------|
+| [v1.2.5](RELEASES/v1.2.5.md) | 2026-07-23 | UX 体验优化：AiDrawer loading skeleton + AI 角标 hover tooltip + DailyView 错误态 + 重试按钮（无依赖变更 / 无 schema 变更） |
 | [v2.0.0-ai](RELEASES/v2.0.0-ai.md) | 2026-07-22 | MVP2 第四阶段：AI 分析 v2.0（智能卡 + 详情抽屉；5 Provider 聚合） |
 | [v1.2.3](RELEASES/v1.2.3.md) | 2026-07-21 | MVP2 第三阶段：日报（daily）后端聚合端点 + 周报对照（PR #15） |
 | [v1.2.2](RELEASES/v1.2.2.md) | 2026-07-21 | MVP2 第二阶段：饮食（diet）模块 + R-006 / Bug #1 收口 |
 | [v1.2.1](RELEASES/v1.2.1.md) | 2026-07-20 | MVP2 第一阶段：消费（expense）模块 |
 | [v1.0.0-mvp](RELEASES/v1.0.0-mvp.md) | 2026-07-15 | MVP1 首个 release：邮箱+密码认证、任务、计划、首页 6 卡 |
 
-> 最新发布：`v2.0.0-ai`（PR #16 squash merge to `main` @ `946995b`）— AI 分析 v2.0：5 Provider 聚合 + Redis 30min 缓存 + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST），无 schema 变更，详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md)。
+> 最新发布：`v1.2.5`（annotated tag @ `main` `08be097` + release notes commit `237f780`）— UX 优化 3 处，详见 [RELEASES/v1.2.5.md](RELEASES/v1.2.5.md)。
 >
-> 上一稳定版：`v1.2.3`（PR #15 squash merge to `main` @ `ccb51dd`）— 含 `GET /api/v1/daily` + `GET /api/v1/daily/week` 两个聚合端点，diet 永久禁用，无 schema 变更。
+> 上一稳定版：`v2.0.0-ai`（PR #16 squash merge to `main` @ `946995b`）— AI 分析 v2.0：5 Provider 聚合 + Redis 30min 缓存 + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST），无 schema 变更，详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md)。
 
 ## 8. 路线图
 
@@ -149,6 +150,7 @@ dev / test 环境 **不通过 Flyway 自动注入**，由集成测试 `UserIT.@B
 - MVP2 第二阶段 v1.2.2（✅）：饮食 diet
 - MVP2 第三阶段 v1.2.3（✅ 部分）：日报 daily 后端能力（前端接入留待 v1.2.4）
 - **AI 分析 v2.0 v2.0.0-ai（✅ 已发布）**：5 个 Provider（Task/Plan/Expense/Diet/Daily stub）+ Redis 缓存 30min + 模板引擎 + 降级 1501 + 限流（60/min GET、6/min POST） + 前端首页 AI 卡激活（抽屉 + Toast）。详见 [RELEASES/v2.0.0-ai.md](RELEASES/v2.0.0-ai.md) + [2026-07-21-ai-v2-design.md §18](docs/superpowers/specs/2026-07-21-ai-v2-design.md)。
+- **UX 体验优化 v1.2.5（✅ 已发布）**：AiDrawer 首次加载 skeleton + AI 角标 hover tooltip（LLM 智能生成 vs 模板降级语义）+ DailyView 错误态友好提示（图标 + 文案 + 重试按钮）。详见 [RELEASES/v1.2.5.md](RELEASES/v1.2.5.md)。
 - 后续：日报前端 v1.2.4、AI v2.1（独立分析页 + 趋势图）、设置页 actions v1.1
 
 ---
