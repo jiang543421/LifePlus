@@ -7,6 +7,8 @@ import { ApiError } from '@/api/http';
 import { showAuthError } from '@/utils/error';
 import TaskFilters from '@/components/TaskFilters.vue';
 import TaskItem from '@/components/TaskItem.vue';
+import TriStateEmpty from '@/components/TriStateEmpty.vue';
+import TriStateError from '@/components/TriStateError.vue';
 import type { TaskCreateRequest, TaskStatus, TaskListItem } from '@/types';
 import { TaskPriorityValue } from '@/types';
 
@@ -16,6 +18,18 @@ const store = useTaskStore();
 const items = computed<TaskListItem[]>(() => store.list ?? []);
 const total = computed(() => store.total);
 
+/** v1.2.6 #4.4：错误态文案根据 errorCode 给具体场景提示；无业务码回落通用文案。 */
+const errorDescription = computed<string>(() => {
+  switch (store.errorCode) {
+    case 1003:
+      return '无权访问该任务列表';
+    case 1006:
+      return '操作过于频繁，请稍后再试';
+    default:
+      return '暂时无法获取任务列表，请稍后重试';
+  }
+});
+
 async function refresh(): Promise<void> {
   const resp = await store.fetchList();
   if (!resp && store.error) {
@@ -23,6 +37,11 @@ async function refresh(): Promise<void> {
     const code = store.errorCode;
     if (code) showAuthError(code);
   }
+}
+
+/** v1.2.6 #4.4：错误态「重试」按钮 → 直接复用 refresh（与 DailyView 同款）。 */
+function onRetry(): void {
+  void refresh();
 }
 
 onMounted(refresh);
@@ -155,9 +174,18 @@ async function submitCreate(): Promise<void> {
         </li>
       </ul>
     </div>
-    <div v-else-if="items.length === 0" class="state empty" data-testid="empty-state">
-      {{ store.hasFilter ? '没有符合条件的任务' : '还没有任务，点右上角新建一个吧' }}
-    </div>
+    <!-- v1.2.6 #4.4：错误态（首次加载失败且 list 为空）→ TriStateError 重试。 -->
+    <TriStateError
+      v-else-if="store.error && store.list === null"
+      test-id="task-list-error"
+      :description="errorDescription"
+      @retry="onRetry"
+    />
+    <TriStateEmpty
+      v-else-if="items.length === 0"
+      test-id="task-list-empty"
+      :description="store.hasFilter ? '没有符合条件的任务' : '还没有任务，点右上角新建一个吧'"
+    />
     <div v-else class="rows" data-testid="task-rows">
       <TaskItem
         v-for="t in items"
@@ -234,11 +262,6 @@ async function submitCreate(): Promise<void> {
 .header h1 {
   margin: 0;
   font-size: 22px;
-}
-.state {
-  padding: 48px 16px;
-  text-align: center;
-  color: var(--el-text-color-secondary);
 }
 
 /* v1.2.6 #1：TaskListView loading skeleton 容器 + 行模板。

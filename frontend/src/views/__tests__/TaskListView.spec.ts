@@ -84,7 +84,7 @@ describe('TaskListView', () => {
     vi.mocked(taskApi.list).mockResolvedValue({ items: [], total: 0, page: 1, size: 20 });
     const w = await mountView();
     await flushPromises();
-    expect(w.find('[data-testid="empty-state"]').exists()).toBe(true);
+    expect(w.find('[data-testid="task-list-empty"]').exists()).toBe(true);
     expect(w.text()).toContain('还没有任务');
   });
 
@@ -234,6 +234,73 @@ describe('TaskListView', () => {
     await flushPromises();
 
     expect(w.find('[data-testid="task-list-skeleton"]').exists()).toBe(false);
-    expect(w.find('[data-testid="empty-state"]').exists()).toBe(true);
+    expect(w.find('[data-testid="task-list-empty"]').exists()).toBe(true);
+  });
+});
+
+// v1.2.6 #4.4：错误态（fetchList 首次失败 + list===null）
+describe('TaskListView / 错误态', () => {
+  it('fetchList 失败 + list===null + !loading → 渲染 task-list-error + 重试按钮', async () => {
+    const { ApiError } = await import('@/api/http');
+    vi.mocked(taskApi.list).mockRejectedValue(new ApiError(1006, '操作过于频繁'));
+    const w = await mountView();
+    await flushPromises();
+
+    const store = useTaskStore();
+    expect(store.error).not.toBeNull();
+    expect(store.list).toBeNull();
+
+    const errorBox = w.find('[data-testid="task-list-error"]');
+    expect(errorBox.exists()).toBe(true);
+    expect(errorBox.text()).toContain('操作过于频繁');
+    const retry = w.find('[data-testid="task-list-error-retry"]');
+    expect(retry.exists()).toBe(true);
+  });
+
+  it('点击错误态「重试」→ 重新调 taskApi.list', async () => {
+    const { ApiError } = await import('@/api/http');
+    vi.mocked(taskApi.list).mockRejectedValueOnce(new ApiError(1006, '...'));
+    vi.mocked(taskApi.list).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: 20 });
+    const w = await mountView();
+    await flushPromises();
+
+    const before = vi.mocked(taskApi.list).mock.calls.length;
+    await w.find('[data-testid="task-list-error-retry"]').trigger('click');
+    await flushPromises();
+
+    expect(vi.mocked(taskApi.list).mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it('errorCode=1003 时错误文案为「无权访问」', async () => {
+    const { ApiError } = await import('@/api/http');
+    vi.mocked(taskApi.list).mockRejectedValue(new ApiError(1003, '无权操作'));
+    const w = await mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="task-list-error"]').text()).toContain('无权访问');
+  });
+
+  it('errorCode=null 回落通用文案「暂时无法获取任务列表」', async () => {
+    const { ApiError } = await import('@/api/http');
+    vi.mocked(taskApi.list).mockRejectedValue(new ApiError(500, '内部错误'));
+    const w = await mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="task-list-error"]').text()).toContain('暂时无法获取任务列表');
+  });
+
+  it('fetchList 失败但 list 已有 → 不渲染错误态（refresh 阶段仍展示旧数据）', async () => {
+    const { ApiError } = await import('@/api/http');
+    // 首次加载成功
+    vi.mocked(taskApi.list).mockResolvedValueOnce({ items: [{ id: 1 } as TaskListItem], total: 1, page: 1, size: 20 });
+    const w = await mountView();
+    await flushPromises();
+    const store = useTaskStore();
+    expect(store.list).not.toBeNull();
+
+    // 模拟 refresh 失败：list 保留，但 error 写入
+    store.$patch({ error: '...', errorCode: 1006, loading: false });
+    await flushPromises();
+
+    expect(w.find('[data-testid="task-list-error"]').exists()).toBe(false);
+    expect(w.find('[data-testid="task-rows"]').exists()).toBe(true);
   });
 });
