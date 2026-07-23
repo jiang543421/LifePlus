@@ -43,6 +43,8 @@ import type { MealType } from '@/types';
 import DietDayGroup from '@/components/DietDayGroup.vue';
 import DietNutritionCard from '@/components/DietNutritionCard.vue';
 import DietDialog from '@/components/DietDialog.vue';
+import TriStateEmpty from '@/components/TriStateEmpty.vue';
+import TriStateError from '@/components/TriStateError.vue';
 
 const store = useDietStore();
 
@@ -65,6 +67,11 @@ async function refreshSummary(): Promise<void> {
   if (result === null && store.errorCode !== null) {
     showAuthError(store.errorCode);
   }
+}
+
+/** v1.2.6 #4.7：错误态「重试」按钮 → 同时重拉 list + summary。 */
+async function onRetry(): Promise<void> {
+  await Promise.all([refreshList(), refreshSummary()]);
 }
 
 onMounted(async () => {
@@ -199,21 +206,29 @@ defineExpose({
 
     <ElRow :gutter="16">
       <ElCol :xs="24" :md="16">
-        <DietDayGroup
-          v-for="g in store.groupedByDay"
-          :key="g.day"
-          :day="g.day"
-          :items="g.items"
-          @edit="onEdit"
-          @delete="onDelete"
+        <!-- v1.2.6 #4.7：错误态（首次加载失败 + list===null）→ TriStateError 重试。
+             优先级高于 empty，避免"加载失败 → 显示空态"误导用户。 -->
+        <TriStateError
+          v-if="store.error && store.list === null"
+          test-id="diet-view-error"
+          description="暂时无法获取饮食记录，请稍后重试"
+          @retry="onRetry"
         />
-        <div
-          v-if="(store.list?.length ?? 0) === 0"
-          class="diet-view__empty"
-          data-testid="diet-view-empty"
-        >
-          当天暂无饮食记录
-        </div>
+        <template v-else>
+          <DietDayGroup
+            v-for="g in store.groupedByDay"
+            :key="g.day"
+            :day="g.day"
+            :items="g.items"
+            @edit="onEdit"
+            @delete="onDelete"
+          />
+          <TriStateEmpty
+            v-if="(store.list?.length ?? 0) === 0"
+            test-id="diet-view-empty"
+            description="当天暂无饮食记录"
+          />
+        </template>
         <ElPagination
           v-if="store.page.total > store.page.size"
           :current-page="store.page.current"
@@ -260,12 +275,6 @@ defineExpose({
 }
 .diet-view__create-btn {
   margin-left: auto;
-}
-.diet-view__empty {
-  padding: 48px 0;
-  text-align: center;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
 }
 .diet-view__pagination {
   margin-top: 16px;
