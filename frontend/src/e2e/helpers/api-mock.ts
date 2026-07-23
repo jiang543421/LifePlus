@@ -1284,3 +1284,157 @@ export async function mockAiRefreshError(page: Page, code: number): Promise<void
     });
   });
 }
+
+// ----------------------------------------------------------------------
+// 日报模块 mock（v1.2.4）
+// ----------------------------------------------------------------------
+
+/** 单日日报 mock 数据（与后端 DailyReportPayload 对齐）。 */
+export interface MockDailyReport {
+  date: string;
+  task: {
+    completedCount: number;
+    totalCount: number;
+    completionRate: number;
+    statusDistribution: Record<string, number>;
+    priorityDistribution: Record<string, number>;
+  };
+  plan: {
+    eventCount: number;
+    totalMinutes: number;
+    categoryDistribution: Record<string, number>;
+    busiestHour: number | null;
+  };
+  expense: {
+    totalAmount: number;
+    count: number;
+    categoryBreakdown: Record<string, number>;
+    topCategories: Array<{ code: string; amount: number }>;
+  };
+  diet: {
+    enabled: boolean;
+    value: null;
+    reason: string;
+  };
+}
+
+/** 周报 mock 数据（与后端 WeeklyReportPayload 对齐）。 */
+export interface MockWeeklyReport {
+  isoWeek: string;
+  weekStart: string;
+  weekEnd: string;
+  comparison: {
+    taskCompletion: { current: number; previous: number; delta: number | null };
+    planEvents: { current: number; previous: number; delta: number | null };
+    expenseAmount: { current: number; previous: number; delta: number | null };
+  };
+}
+
+const DEFAULT_DAILY: MockDailyReport = {
+  date: '2026-07-23',
+  task: {
+    completedCount: 3,
+    totalCount: 5,
+    completionRate: 0.6,
+    statusDistribution: { TODO: 2, DONE: 3, CANCELLED: 0 },
+    priorityDistribution: { NONE: 1, LOW: 1, MEDIUM: 2, HIGH: 1 },
+  },
+  plan: {
+    eventCount: 2,
+    totalMinutes: 90,
+    categoryDistribution: { WORK: 2 },
+    busiestHour: 10,
+  },
+  expense: {
+    totalAmount: 128.5,
+    count: 3,
+    categoryBreakdown: { MEAL: 78.5, SHOPPING: 0, TRANSPORT: 50, SUBSCRIPTION: 0, OTHER: 0 },
+    topCategories: [
+      { code: 'MEAL', amount: 78.5 },
+      { code: 'TRANSPORT', amount: 50 },
+    ],
+  },
+  diet: {
+    enabled: false,
+    value: null,
+    reason: '饮食模块暂未启用（v1.2.4+ 启用）',
+  },
+};
+
+const DEFAULT_WEEK: MockWeeklyReport = {
+  isoWeek: '2026-W30',
+  weekStart: '2026-07-20',
+  weekEnd: '2026-07-26',
+  comparison: {
+    taskCompletion: { current: 0.65, previous: 0.5, delta: 0.15 },
+    planEvents: { current: 8, previous: 5, delta: 3 },
+    expenseAmount: { current: 1200, previous: 820, delta: 380 },
+  },
+};
+
+/** setupDailyDefaults 返回的可变状态。 */
+export interface DailyMockState {
+  dailyCallCount: number;
+  weekCallCount: number;
+  /** 最近一次 daily 请求的 date query（缺省 null = 未传）。 */
+  lastDailyDate: string | null;
+  /** 最近一次 week 请求的 date query。 */
+  lastWeekDate: string | null;
+}
+
+/**
+ * 一站式日报 mock：拦截 `GET /api/v1/daily` 与 `GET /api/v1/daily/week`。
+ *
+ * <p>`/daily` 默认返回 {@link DEFAULT_DAILY}；`/daily/week` 默认返回 {@link DEFAULT_WEEK}。
+ * 闭包内状态便于测试断言调用次数与是否真的带了 date 参数。
+ *
+ * <p>真实后端契约由 {@code backend/.../daily/DailyReportIT.java}（Testcontainers）覆盖。
+ */
+export async function setupDailyDefaults(
+  page: Page,
+  opts?: { daily?: MockDailyReport; week?: MockWeeklyReport },
+): Promise<DailyMockState> {
+  const state: DailyMockState = {
+    dailyCallCount: 0,
+    weekCallCount: 0,
+    lastDailyDate: null,
+    lastWeekDate: null,
+  };
+  const daily = opts?.daily ?? DEFAULT_DAILY;
+  const week = opts?.week ?? DEFAULT_WEEK;
+
+  await page.route('**/api/v1/daily**', async (route) => {
+    const req = route.request();
+    if (req.method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    const url = new URL(req.url());
+    const path = url.pathname.replace(/^\/api\/v1/, '');
+    const dateParam = url.searchParams.get('date');
+
+    if (path === '/daily/week') {
+      state.weekCallCount += 1;
+      state.lastWeekDate = dateParam;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(week),
+      });
+      return;
+    }
+    if (path === '/daily') {
+      state.dailyCallCount += 1;
+      state.lastDailyDate = dateParam;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: envelopeOk(daily),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  return state;
+}
