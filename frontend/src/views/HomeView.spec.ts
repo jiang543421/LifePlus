@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { nextTick } from 'vue';
 import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import ElementPlus, { ElMessage } from 'element-plus';
+import ElementPlus, { ElMessage, ElTooltip } from 'element-plus';
 import HomeView from '@/views/HomeView.vue';
 import { useAuthStore } from '@/stores/auth';
 import { aiApi } from '@/api/ai';
@@ -272,6 +272,38 @@ describe('HomeView — AI 卡集成', () => {
     expect(aiCard.find('[data-testid="home-card-source-badge"]').exists()).toBe(true);
     const dailyCard = wrapper.find('[data-testid="home-card-daily"]');
     expect(dailyCard.find('[data-testid="home-card-source-badge"]').exists()).toBe(false);
+  });
+
+  // ---- v1.2.5 #2：AI 角标 hover 提示 ----
+
+  it('AI 角标（llm）由 ElTooltip 包裹，content 说明 LLM 智能生成', async () => {
+    vi.mocked(aiApi.today).mockResolvedValueOnce({ ...sampleInsight, source: 'llm' });
+    const wrapper = mountHome();
+    await flushPromises();
+
+    await clickCard(wrapper, 'ai');
+    await flushPromises();
+
+    // ElTooltip 不透传 data-testid 到 DOM，改用组件实例 props 断言 content。
+    const tooltip = wrapper.findComponent(ElTooltip);
+    expect(tooltip.exists()).toBe(true);
+    const content = tooltip.props('content') as string;
+    expect(content).toContain('AI 模型实时生成');
+  });
+
+  it('AI 角标（template）tooltip 文案说明模板降级语义', async () => {
+    vi.mocked(aiApi.today).mockResolvedValueOnce({ ...sampleInsight, source: 'template' });
+    const wrapper = mountHome();
+    await flushPromises();
+
+    await clickCard(wrapper, 'ai');
+    await flushPromises();
+
+    const tooltip = wrapper.findComponent(ElTooltip);
+    expect(tooltip.exists()).toBe(true);
+    const content = tooltip.props('content') as string;
+    expect(content).toContain('模板');
+    expect(content).toContain('AI 模型暂不可用');
   });
 
   // ---- v2.1 PR3：抽屉「查看完整分析 →」跳转 ----

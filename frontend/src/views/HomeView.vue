@@ -49,15 +49,21 @@
                  加载成功且后端 source 字段存在时显示；点击 AI 卡 → 抽屉打开时
                  已可在 AiDrawer 顶部看到完整 loading skeleton，因此卡本体不再
                  重复渲染骨架屏。 -->
-            <span
+            <ElTooltip
               v-if="card.key === 'ai' && aiInsight?.source"
-              :class="['home-view__source-badge', `home-view__source-badge--${aiInsight.source}`]"
-              :data-testid="`home-card-source-badge`"
-              role="status"
-              :aria-label="aiInsight.source === 'llm' ? 'AI 智能生成' : '模板生成'"
+              :content="sourceBadgeTooltip(aiInsight.source)"
+              placement="top"
+              effect="light"
             >
-              {{ aiInsight.source === 'llm' ? 'AI 智能' : '模板' }}
-            </span>
+              <span
+                :class="['home-view__source-badge', `home-view__source-badge--${aiInsight.source}`]"
+                :data-testid="`home-card-source-badge`"
+                role="status"
+                :aria-label="aiInsight.source === 'llm' ? 'AI 智能生成' : '模板生成'"
+              >
+                {{ aiInsight.source === 'llm' ? 'AI 智能' : '模板' }}
+              </span>
+            </ElTooltip>
           </div>
         </ElCol>
       </ElRow>
@@ -76,7 +82,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage, ElRow, ElCol } from 'element-plus';
+import { ElMessage, ElRow, ElCol, ElTooltip } from 'element-plus';
 import TopBar from '@/components/TopBar.vue';
 import ModuleCard from '@/components/ModuleCard.vue';
 import AiDrawer from '@/components/AiDrawer.vue';
@@ -140,6 +146,16 @@ function onAiOpenAnalysis(): void {
   void router.push({ name: 'ai-analysis' }).catch(() => {
     // 路由尚未注册（PR3 Task 25 落地前）静默吞掉；后续 Task 25 后会真正跳转。
   });
+}
+
+/**
+ * v1.2.5 #2：AI 卡 source 角标的 hover tooltip 文案。
+ * - source=llm：本次洞察由 LLM 实时生成
+ * - source=template：模板降级，AI 模型暂不可用
+ */
+function sourceBadgeTooltip(source: 'llm' | 'template'): string {
+  if (source === 'llm') return '本次洞察由 AI 模型实时生成';
+  return '模板生成的默认洞察（AI 模型暂不可用）';
 }
 
 /**
