@@ -167,6 +167,33 @@ class AiTrendServiceTest {
         assertThat(taskPoints.get(2).label()).isEqualTo("100%");
     }
 
+    /**
+     * Case 6：plan 字段映射 — value=eventCount（整数 double），label="{count} 项"，
+     * 0 事件也要正常出点。
+     */
+    @Test
+    void range_planSeries_mapsEventCountToValueAndUnitLabel() {
+        LocalDate today = LocalDate.of(2026, 7, 23);
+        when(dailyReportService.today()).thenReturn(today);
+        long[] counts = {0L, 3L, 12L};
+        java.util.concurrent.atomic.AtomicInteger callIdx = new java.util.concurrent.atomic.AtomicInteger();
+        when(dailyReportService.daily(anyLong(), any()))
+                .thenAnswer(inv -> stubPayload(0.0, counts[callIdx.getAndIncrement()],
+                        BigDecimal.ZERO));
+
+        var resp = service.range(1L, 3);
+
+        var planPoints = resp.series().get("plan").points();
+        assertThat(planPoints).hasSize(3);
+        // 0 事件也要有 label，不能跳过
+        assertThat(planPoints.get(0).value()).isEqualTo(0.0);
+        assertThat(planPoints.get(0).label()).isEqualTo("0项");
+        assertThat(planPoints.get(1).value()).isEqualTo(3.0);
+        assertThat(planPoints.get(1).label()).isEqualTo("3项");
+        assertThat(planPoints.get(2).value()).isEqualTo(12.0);
+        assertThat(planPoints.get(2).label()).isEqualTo("12项");
+    }
+
     /** 构造固定指标的 payload（mapper 调用 stub 用）。 */
     private static DailyReportPayload stubPayload(double completionRate,
                                                   long eventCount,
