@@ -414,6 +414,7 @@ docs(readme): document seed account and env vars
 | **启动期 fail fast** | 缺失 / 占位符（`sk-replace-` 前缀）/ 长度 < 20 → `IllegalStateException` → Spring 启动失败 |
 | **Ollama 模式特殊** | `circuit-breaker.enabled=false` 自动禁用（本地进程死掉与远程故障语义不同）|
 | **轮换流程** | DeepSeek 控制台撤销旧 key → 创建新 key → 改 `.env` → 重启（5 分钟闭环）|
+| **提交期拦截** | `.githooks/pre-commit` + `.gitleaks.toml`（v2.1 PR4 引入）：`gitleaks protect --staged` 扫 staged diff，命中 `sk-` / `LP_JWT_SECRET` / 高熵 base64 模式即拒合；开发者克隆后跑 `./scripts/install-hooks.sh` 设置 `core.hooksPath`，CI 端单独配置或显式调 gitleaks |
 
 ### 11.3 3 层降级链路（hard rule）
 
