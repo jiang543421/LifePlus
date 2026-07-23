@@ -26,7 +26,13 @@ function mountWithInsight(insight: AiInsightResponse | null): VueWrapper {
   // 直接写 state：避免 reactivity 警告 + 不污染 aiApi 的 mock 计数
   store.$patch({ insight, loading: false, error: null, errorCode: null });
   return mount(AiAnalysisView, {
-    global: { plugins: [ElementPlus] },
+    global: {
+      plugins: [ElementPlus],
+      // TrendPanel 内嵌在 AiAnalysisView 里（v2.2 C11），但本测试只覆盖
+      // 4 段 + source tag + degraded hint + empty state 这几条路径；TrendPanel
+      // 需要 router.query + aiTrendApi（依赖太多），单独 stub 掉。
+      stubs: { TrendPanel: true },
+    },
   });
 }
 
@@ -133,7 +139,9 @@ describe('AiAnalysisView — 4 段 + source tag + degraded hint + empty state', 
     // 模拟从首页带过来的新鲜缓存
     store.$patch({ insight: { ...baseInsight, source: 'llm', freshnessSeconds: 60 }, loading: false });
 
-    mount(AiAnalysisView, { global: { plugins: [ElementPlus] } });
+    mount(AiAnalysisView, {
+      global: { plugins: [ElementPlus], stubs: { TrendPanel: true } },
+    });
     await flushPromises();
 
     // isFresh=true → store 不发请求
