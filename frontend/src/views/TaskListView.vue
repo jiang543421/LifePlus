@@ -138,7 +138,23 @@ async function submitCreate(): Promise<void> {
 
     <TaskFilters :filter="store.filter" @update:filter="onFilterUpdate" @reset="onResetFilter" />
 
-    <div v-if="store.loading" class="state">加载中…</div>
+    <!-- v1.2.6 #1：首次加载骨架屏（loading=true && list===null）。
+         refresh 阶段 list 仍保留旧数据，条件自动回落 → 渲染真实 rows / empty-state，行为同 v1.2.5 AiDrawer。 -->
+    <div v-if="store.loading && store.list === null" class="task-list-view__skeleton" data-testid="task-list-skeleton">
+      <ul class="task-list-view__skeleton-list">
+        <li
+          v-for="n in 6"
+          :key="n"
+          class="task-list-view__skeleton-item"
+          data-testid="task-list-skeleton-item"
+        >
+          <el-skeleton-item variant="rect" style="width: 56px; height: 22px;" data-testid="task-list-skeleton-status" />
+          <el-skeleton-item variant="text" style="width: 38%;" data-testid="task-list-skeleton-title" />
+          <el-skeleton-item variant="text" style="width: 48px;" data-testid="task-list-skeleton-meta-priority" />
+          <el-skeleton-item variant="text" style="width: 88px;" data-testid="task-list-skeleton-meta-due" />
+        </li>
+      </ul>
+    </div>
     <div v-else-if="items.length === 0" class="state empty" data-testid="empty-state">
       {{ store.hasFilter ? '没有符合条件的任务' : '还没有任务，点右上角新建一个吧' }}
     </div>
@@ -223,6 +239,30 @@ async function submitCreate(): Promise<void> {
   padding: 48px 16px;
   text-align: center;
   color: var(--el-text-color-secondary);
+}
+
+/* v1.2.6 #1：TaskListView loading skeleton 容器 + 行模板。
+   视觉密度与真实 .rows 保持一致（48px 上下 padding + 6 行）。 */
+.task-list-view__skeleton {
+  background: var(--el-fill-color-blank);
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  padding: 4px 0;
+}
+.task-list-view__skeleton-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.task-list-view__skeleton-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.task-list-view__skeleton-item:last-child {
+  border-bottom: none;
 }
 .rows {
   background: var(--el-fill-color-blank);

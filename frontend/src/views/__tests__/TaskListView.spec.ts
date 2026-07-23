@@ -184,4 +184,56 @@ describe('TaskListView', () => {
     await vm.onPageChange(3);
     expect(taskApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3 }));
   });
+
+  // ---- v1.2.6 #1：TaskListView loading skeleton ----
+
+  it('首次加载（loading && list=null）→ 渲染 skeleton 替代旧「加载中…」', async () => {
+    // 让 list 永不 resolve → store.loading=true, store.list=null
+    vi.mocked(taskApi.list).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    const skel = w.find('[data-testid="task-list-skeleton"]');
+    expect(skel.exists()).toBe(true);
+    // 旧「加载中…」文字应不再出现
+    expect(w.text()).not.toContain('加载中…');
+  });
+
+  it('skeleton 含 N 个 list-row + 每行 4 段（status / title / meta-priority / meta-due）', async () => {
+    vi.mocked(taskApi.list).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    const items = w.findAll('[data-testid="task-list-skeleton-item"]');
+    // 默认 6 个占位（与真实 list 的密度一致）
+    expect(items.length).toBe(6);
+    const first = items[0];
+    expect(first.find('[data-testid="task-list-skeleton-status"]').exists()).toBe(true);
+    expect(first.find('[data-testid="task-list-skeleton-title"]').exists()).toBe(true);
+    expect(first.find('[data-testid="task-list-skeleton-meta-priority"]').exists()).toBe(true);
+    expect(first.find('[data-testid="task-list-skeleton-meta-due"]').exists()).toBe(true);
+  });
+
+  it('首次加载（loading）时不渲染真实 task-rows（避免视觉歧义）', async () => {
+    vi.mocked(taskApi.list).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="task-rows"]').exists()).toBe(false);
+  });
+
+  it('refresh 阶段（loading=true && list 已有）→ 不渲染 skeleton，保留旧数据', async () => {
+    // 首次加载完成
+    vi.mocked(taskApi.list).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: 20 });
+    const w = await mountView();
+    await flushPromises();
+    const store = useTaskStore();
+    expect(store.list).not.toBeNull();
+
+    // 模拟 refresh：loading=true, list 保留
+    store.$patch({ loading: true, list: [] });
+    await flushPromises();
+
+    expect(w.find('[data-testid="task-list-skeleton"]').exists()).toBe(false);
+    expect(w.find('[data-testid="empty-state"]').exists()).toBe(true);
+  });
 });
