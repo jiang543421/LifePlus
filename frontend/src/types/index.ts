@@ -369,6 +369,23 @@ export type {
 } from './diet';
 
 // ----------------------------------------------------------------------
+// Daily Report 模块类型（spec §08-daily-report-design §6 + 后端 Daily*Record）
+// ----------------------------------------------------------------------
+
+export type {
+  TaskMetrics,
+  PlanMetrics,
+  ExpenseCategoryTop,
+  ExpenseMetrics,
+  DietValue,
+  DietMetrics,
+  DailyReportPayload,
+  WeeklyTriplet,
+  WeeklyComparison,
+  WeeklyReportPayload,
+} from './daily';
+
+// ----------------------------------------------------------------------
 // Expense 模块类型（spec §06-expense section 5 + 后端 Expense*Response/DTO）
 // ----------------------------------------------------------------------
 
