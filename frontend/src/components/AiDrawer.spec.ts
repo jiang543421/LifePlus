@@ -138,4 +138,31 @@ describe('AiDrawer', () => {
     expect(wrapper.find('[data-testid="ai-drawer-headline"]').exists()).toBe(false);
     expect(wrapper.findAll('[data-testid="ai-drawer-chip"]')).toHaveLength(0);
   });
+
+  // ---- v1.2.5 #1：loading skeleton ----
+
+  it('insight=null && show=true 时渲染 skeleton 占位（首次加载感知）', async () => {
+    const wrapper = mountDrawer({ insight: null });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="ai-drawer-skeleton"]').exists()).toBe(true);
+  });
+
+  it('skeleton 包含 1 个 headline skeleton + 3 个 chip skeleton（占位结构稳定）', async () => {
+    const wrapper = mountDrawer({ insight: null });
+    await flushPromises();
+    const skeletons = wrapper.findAll('[data-testid="ai-drawer-skeleton-item"]');
+    // 1 headline + 3 chip = 4 个骨架单元
+    expect(skeletons.length).toBeGreaterThanOrEqual(4);
+    const headlineSkeleton = wrapper.find('[data-testid="ai-drawer-skeleton-headline"]');
+    expect(headlineSkeleton.exists()).toBe(true);
+    const chipSkeletons = wrapper.findAll('[data-testid="ai-drawer-skeleton-chip"]');
+    expect(chipSkeletons).toHaveLength(3);
+  });
+
+  it('skeleton 状态下不渲染刷新按钮 / 查看完整分析 链接（避免在 loading 时误导用户操作）', async () => {
+    const wrapper = mountDrawer({ insight: null });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="ai-drawer-refresh"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="ai-drawer-open-analysis"]').exists()).toBe(false);
+  });
 });

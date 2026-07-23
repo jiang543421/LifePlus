@@ -66,12 +66,44 @@
         </div>
       </footer>
     </div>
+
+    <!-- v1.2.5 #1：loading skeleton — 首次加载（insight=null）展示骨架屏，
+         避免抽屉打开后空白等待的"卡顿感"。refresh 时保留旧 insight，
+         按钮自身 loading 态已覆盖，故不重复渲染。 -->
+    <div
+      v-else
+      class="ai-drawer ai-drawer--loading"
+      data-testid="ai-drawer-skeleton"
+    >
+      <ElSkeleton animated :rows="1" class="ai-drawer__skeleton-headline">
+        <template #template>
+          <ElSkeletonItem
+            variant="text"
+            style="width: 86%; height: 20px;"
+            data-testid="ai-drawer-skeleton-headline"
+          />
+        </template>
+      </ElSkeleton>
+
+      <ul class="ai-drawer__chips" data-testid="ai-drawer-chips-skeleton">
+        <li
+          v-for="n in 3"
+          :key="n"
+          class="ai-drawer__chip ai-drawer__chip--skeleton"
+          data-testid="ai-drawer-skeleton-chip"
+        >
+          <ElSkeletonItem variant="text" style="width: 40%; height: 13px;" data-testid="ai-drawer-skeleton-item" />
+          <ElSkeletonItem variant="text" style="width: 30%; height: 18px;" data-testid="ai-drawer-skeleton-item" />
+          <ElSkeletonItem variant="text" style="width: 50%; height: 12px;" data-testid="ai-drawer-skeleton-item" />
+        </li>
+      </ul>
+    </div>
   </ElDrawer>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ElDrawer, ElButton } from 'element-plus';
+import { ElDrawer, ElButton, ElSkeleton, ElSkeletonItem } from 'element-plus';
 import type { AiInsightResponse } from '@/types';
 
 interface Props {
@@ -203,5 +235,19 @@ function onOpenAnalysisClick(): void {
 .ai-drawer__freshness {
   font-size: 12px;
   color: #909399;
+}
+
+/* v1.2.5 #1：loading skeleton 样式 — 复用 .ai-drawer 的间距/列宽。
+   chip skeleton 用占位 grid + 微调透明度模拟 loading 闪烁，避免视觉跳变。 */
+.ai-drawer--loading .ai-drawer__chip--skeleton {
+  background: #f5f7fa;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 6px 12px;
+  align-items: center;
+}
+.ai-drawer__skeleton-headline {
+  padding: 4px 0 12px;
 }
 </style>
