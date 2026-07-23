@@ -113,6 +113,17 @@ async function goToNextWeek(): Promise<void> {
   await store.fetchWeek(currentDate.value || undefined);
 }
 
+/**
+ * v1.2.5 #3：错误态「重试」按钮 → 同时拉 daily 与当前 week。
+ * 复用现有 onMounted 调用的同一对 fetch，与 URL 双向绑定一致。
+ */
+async function onRetry(): Promise<void> {
+  await store.fetchDaily(currentDate.value || undefined);
+  if (currentWeek.value) {
+    await store.fetchWeek(currentDate.value || undefined);
+  }
+}
+
 /** delta=null → "—"（spec §4.1）。 */
 function formatDelta(delta: number | null): string {
   return delta === null ? '—' : delta.toFixed(2);
@@ -253,6 +264,30 @@ function formatIntDelta(delta: number | null): string {
         </section>
       </template>
 
+      <div
+        v-else-if="store.error"
+        class="daily-view__error"
+        data-testid="daily-view-error"
+      >
+        <ElEmpty
+          :description="'暂时无法获取日报数据，请稍后重试'"
+          data-testid="daily-view-error-description"
+        >
+          <template #image>
+            <div class="daily-view__error-icon">⚠️</div>
+          </template>
+          <template #default>
+            <ElButton
+              type="primary"
+              data-testid="daily-view-error-retry"
+              @click="onRetry"
+            >
+              重试
+            </ElButton>
+          </template>
+        </ElEmpty>
+      </div>
+
       <ElEmpty
         v-else
         description="暂无日报数据，请稍后重试"
@@ -380,5 +415,18 @@ function formatIntDelta(delta: number | null): string {
   background: #fff;
   border-radius: 8px;
   padding: 24px;
+}
+
+/* v1.2.5 #3：错误态容器 — ElEmpty 自带 padding 不重复；居中放图标 + 文案 + 重试 */
+.daily-view__error {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+}
+.daily-view__error-icon {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 8px;
 }
 </style>

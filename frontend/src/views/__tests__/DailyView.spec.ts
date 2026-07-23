@@ -197,6 +197,59 @@ describe('DailyView — 错误处理', () => {
     expect(store.errorCode).toBe(1001);
     expect(showAuthError).not.toHaveBeenCalled(); // mount 时不自动 toast
   });
+
+  // ---- v1.2.5 #3：错误态友好提示 ----
+
+  it('fetchDaily 失败 + daily=null + !loading → 渲染友好错误态（含文案 + 重试按钮）', async () => {
+    vi.mocked(dailyApi.daily).mockResolvedValue(null as unknown as DailyReportPayload);
+    const w = mountView();
+    await flushPromises();
+
+    const store = useDailyStore();
+    store.$patch({ errorCode: 1501, error: 'daily temporarily unavailable', daily: null, loading: false });
+
+    await flushPromises();
+
+    const errorState = w.find('[data-testid="daily-view-error"]');
+    expect(errorState.exists()).toBe(true);
+    // 文案应避免直接透出 "temporarily unavailable" 这类英文技术细节
+    const desc = w.find('[data-testid="daily-view-error-description"]');
+    expect(desc.exists()).toBe(true);
+    expect(desc.text()).toContain('暂时无法获取日报数据');
+    // 提供重试入口
+    const retry = w.find('[data-testid="daily-view-error-retry"]');
+    expect(retry.exists()).toBe(true);
+  });
+
+  it('点击错误态「重试」→ 调 dailyApi.daily 重新拉取', async () => {
+    vi.mocked(dailyApi.daily).mockResolvedValue(null as unknown as DailyReportPayload);
+    const w = mountView();
+    await flushPromises();
+
+    const store = useDailyStore();
+    store.$patch({ errorCode: 1501, error: '...', daily: null, loading: false });
+    await flushPromises();
+
+    const callsBefore = vi.mocked(dailyApi.daily).mock.calls.length;
+    await w.find('[data-testid="daily-view-error-retry"]').trigger('click');
+    await flushPromises();
+
+    expect(vi.mocked(dailyApi.daily).mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
+  it('loading 状态（未失败）→ 不渲染错误态（避免与 skeleton 互斥歧义）', async () => {
+    vi.mocked(dailyApi.daily).mockResolvedValue(null as unknown as DailyReportPayload);
+    const w = mountView();
+    await flushPromises();
+
+    const store = useDailyStore();
+    store.$patch({ loading: true, daily: null, error: null, errorCode: null });
+    await flushPromises();
+
+    expect(w.find('[data-testid="daily-view-error"]').exists()).toBe(false);
+    // skeleton 仍然在
+    expect(w.find('.daily-view__loading').exists()).toBe(true);
+  });
 });
 
 describe('DailyView — URL sync', () => {
