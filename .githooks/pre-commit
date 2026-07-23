@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# LifePulse pre-commit secret scan (v2.1 PR4 引入)。
+#
+# 目的：拦截任何包含 LP_LLM_API_KEY / LP_JWT_SECRET / 真实高熵字符串的提交。
+# 与 .gitleaks.toml 的正则规则同源；模式：protect --staged → 仅扫 staged diff。
+#
+# 失败策略：任何 gitleaks ERROR → exit 1，git commit 拒绝。如果 gitleaks 二进制
+# 不在 PATH 上则打印警告并放行（dev 环境初始接入期允许；CI 必须安装并强制）。
+#
+# 启用方法：仓库根目录运行 ./scripts/install-hooks.sh（一次性设置 core.hooksPath）。
+# 为什么不用 husky：本仓库还未引入 husky/lint-staged；用 git 原生 .githooks
+# 零依赖、易回滚（`git config --unset core.hooksPath` 即还原）。
+
+set -euo pipefail
+
+# 1) 找不到 gitleaks → 警告放行（不阻断 dev 提交）
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "[pre-commit] gitleaks not found on PATH; skipping secret scan." >&2
+  echo "[pre-commit] Install: https://github.com/gitleaks/gitleaks  (brew install gitleaks / scoop install gitleaks)" >&2
+  exit 0
+fi
+
+# 2) protect --staged 模式：仅扫 staged diff；红线命中 → exit 1 → git 拒合。
+exec gitleaks protect --staged --redact --verbose --config .gitleaks.toml
