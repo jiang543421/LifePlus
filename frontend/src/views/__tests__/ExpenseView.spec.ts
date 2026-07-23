@@ -304,3 +304,63 @@ describe('ExpenseView / dialog 集成', () => {
     expect(vi.mocked(expenseApi.summary).mock.calls.length).toBe(beforeSummary + 1);
   });
 });
+
+// ---------------------------------------------------------------
+// v1.2.6 #3：ExpenseView loading skeleton
+// ---------------------------------------------------------------
+describe('ExpenseView / loading skeleton', () => {
+  it('首次加载（loading=true && list=null）→ 渲染 expense-list-skeleton + 不渲染真实 ExpenseList', async () => {
+    // 让 list 永不 resolve → store.loading=true, store.list=null
+    vi.mocked(expenseApi.list).mockReturnValue(new Promise(() => {}));
+    vi.mocked(expenseApi.summary).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    const skel = w.find('[data-testid="expense-list-skeleton"]');
+    expect(skel.exists()).toBe(true);
+    // 真实 ExpenseList 不渲染（因为整个左侧被 skeleton 替换）
+    expect(w.findComponent(ExpenseList).exists()).toBe(false);
+  });
+
+  it('skeleton 含 3 个 day-group + 每个含 day-header + 3 行 item skeleton（含 category / amount / note / time 四段）', async () => {
+    vi.mocked(expenseApi.list).mockReturnValue(new Promise(() => {}));
+    vi.mocked(expenseApi.summary).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    const groups = w.findAll('[data-testid="expense-list-skeleton-day-group"]');
+    expect(groups).toHaveLength(3);
+    expect(groups[0].find('[data-testid="expense-list-skeleton-day-header"]').exists()).toBe(true);
+    const items = groups[0].findAll('[data-testid="expense-list-skeleton-item"]');
+    expect(items).toHaveLength(3);
+    const firstItem = items[0];
+    expect(firstItem.find('[data-testid="expense-list-skeleton-category"]').exists()).toBe(true);
+    expect(firstItem.find('[data-testid="expense-list-skeleton-amount"]').exists()).toBe(true);
+    expect(firstItem.find('[data-testid="expense-list-skeleton-note"]').exists()).toBe(true);
+    expect(firstItem.find('[data-testid="expense-list-skeleton-time"]').exists()).toBe(true);
+  });
+
+  it('refresh 阶段（loading=true && list 已有）→ 渲染真实 ExpenseList 不渲染 skeleton', async () => {
+    // 首次加载完成
+    vi.mocked(expenseApi.list).mockResolvedValueOnce({ items: sampleList, total: sampleList.length, page: 1, size: 20 });
+    const w = await mountView();
+    await flushPromises();
+    const store = useExpenseStore();
+    expect(store.list).not.toBeNull();
+
+    // refresh：loading=true, list 仍保留
+    store.$patch({ loading: true, list: [] });
+    await flushPromises();
+
+    expect(w.find('[data-testid="expense-list-skeleton"]').exists()).toBe(false);
+    expect(w.findComponent(ExpenseList).exists()).toBe(true);
+  });
+
+  it('首次加载（loading）时不渲染 pagination（避免 layout 抖动）', async () => {
+    vi.mocked(expenseApi.list).mockReturnValue(new Promise(() => {}));
+    vi.mocked(expenseApi.summary).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="expense-pagination"]').exists()).toBe(false);
+  });
+});
