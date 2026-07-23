@@ -264,8 +264,8 @@ function formatAge(secs: number): string {
 }
 
 .loading-block {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--tri-state-loading-bg);
+  border-radius: var(--tri-state-loading-radius);
   padding: 24px;
 }
 

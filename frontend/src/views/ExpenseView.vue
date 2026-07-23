@@ -306,14 +306,15 @@ defineExpose({
 }
 
 /* v1.2.6 #3：ExpenseView loading skeleton（与真实 ExpenseList 视觉对齐）。
-   day-group 卡 + items 行；与真实结构 1:1，确保"骨架 → 真实"切换不抖动。 */
+   day-group 卡 + items 行；与真实结构 1:1，确保"骨架 → 真实"切换不抖动。
+   v1.2.6 #5：day-group bg / radius 切到 --tri-state-loading-* token。 */
 .expense-list-skeleton {
   display: flex;
   flex-direction: column;
 }
 .expense-list-skeleton__day-group {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--tri-state-loading-bg);
+  border-radius: var(--tri-state-loading-radius);
   margin-bottom: 12px;
   padding: 10px 16px 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);

@@ -397,8 +397,8 @@ function formatIntDelta(delta: number | null): string {
   /* 共享样式已生效；此处为占位便于未来按类型差异化颜色 */
 }
 .daily-view__loading {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--tri-state-loading-bg);
+  border-radius: var(--tri-state-loading-radius);
   padding: 24px;
 }
 

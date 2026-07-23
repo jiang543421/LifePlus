@@ -276,11 +276,12 @@ function timeLabel(ev: PlanListItem): string {
 }
 
 /* v1.2.6 #2：PlanCalendarView loading skeleton 样式（与真实 .calendar-month 视觉对齐）。
-   容器 padding / weekgrid gap 与真实组件一致，让"骨架 → 真实"切换不抖动。 */
+   容器 padding / weekgrid gap 与真实组件一致，让"骨架 → 真实"切换不抖动。
+   v1.2.6 #5：bg / radius 切到 --tri-state-loading-* token。 */
 .plan-calendar-view__skeleton {
-  background: var(--el-fill-color-blank);
+  background: var(--tri-state-loading-bg);
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border-radius: var(--tri-state-loading-radius);
   padding: 16px;
 }
 .plan-calendar-view__skeleton-header {

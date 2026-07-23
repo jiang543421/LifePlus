@@ -265,10 +265,11 @@ async function submitCreate(): Promise<void> {
 }
 
 /* v1.2.6 #1：TaskListView loading skeleton 容器 + 行模板。
-   视觉密度与真实 .rows 保持一致（48px 上下 padding + 6 行）。 */
+   视觉密度与真实 .rows 保持一致（48px 上下 padding + 6 行）。
+   v1.2.6 #5：bg / radius 切到 --tri-state-loading-* token（与其他 view 对齐）。 */
 .task-list-view__skeleton {
-  background: var(--el-fill-color-blank);
-  border-radius: 8px;
+  background: var(--tri-state-loading-bg);
+  border-radius: var(--tri-state-loading-radius);
   border: 1px solid var(--el-border-color-lighter);
   padding: 4px 0;
 }

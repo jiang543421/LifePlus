@@ -1,0 +1,28 @@
+/*
+ * tri-state.css — v1.2.6 #5：三态设计 token 统一。
+ *
+ * <p>之前每个 view 私有 .skeleton / .loading / .empty / .error 类写散在 scoped 样式中，
+ * bg / border-radius / padding 数值各处不一。本文件集中提供 token，未来调主题只改一处。
+ *
+ * <p>三态：
+ * <ul>
+ *   <li><b>loading / skeleton</b>：5 处 view 私有样式（TaskListView / PlanCalendarView /
+ *       ExpenseView / DailyView / AiAnalysisView），本文件提供 --tri-state-loading-bg
+ *       + --tri-state-loading-radius 两个共用 token</li>
+ *   <li><b>empty / error</b>：v1.2.6 #4 全量迁移到 TriStateEmpty / TriStateError
+ *       （Element Plus ElEmpty 自带样式），不再定义这两个态的 token</li>
+ * </ul>
+ *
+ * <p>为什么 padding / border 不抽 token？
+ * <ul>
+ *   <li>5 个 view 的 skeleton padding 不一（4px 0 / 16px / 24px），是有意为之——
+ *       让 skeleton 视觉密度贴近真实列表行，强制统一会引入布局抖动</li>
+ *   <li>PlanCalendarView 显式 border 是为了匹配 CalendarMonth 的边框；其他 view
+ *       不需要 border。border 是布局耦合参数，不该 token 化</li>
+ * </ul>
+ */
+:root {
+  /* 加载态容器：5 个 view 私有 .skeleton / .loading-block 共同消费。 */
+  --tri-state-loading-bg: var(--el-fill-color-blank);
+  --tri-state-loading-radius: 8px;
+}
