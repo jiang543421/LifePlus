@@ -369,6 +369,47 @@ export type {
 } from './diet';
 
 // ----------------------------------------------------------------------
+// AI v2.2 trend 趋势图类型（spec §v2.2 trend / CLAUDE.md §11.1 无新表约束）
+// ----------------------------------------------------------------------
+
+/** 单个指标点（与后端 MetricPointDto record 对齐）。 */
+export interface MetricPointDto {
+  /** ISO-8601 date（YYYY-MM-DD）。 */
+  date: string;
+  /** 数值（task=0..1，plan=整数，expense=2 位小数金额）。 */
+  value: number;
+  /** 已渲染好的展示字符串（例 "85%" / "3项" / "¥420.00"）。 */
+  label: string;
+}
+
+/** 单个指标时间序列（与后端 MetricSeriesDto record 对齐）。 */
+export interface MetricSeriesDto {
+  /** key：task / plan / expense / diet。diet 永远为空 points。 */
+  key: string;
+  /** 中文 label（"任务完成率" / "日程事件" / "消费金额" / "饮食（永久占位）"）。 */
+  label: string;
+  /** 单位字符串（"%" / "项" / "¥" / ""）。 */
+  unit: string;
+  points: MetricPointDto[];
+}
+
+/** AI 趋势图响应（GET /ai/insight/trend?window=7|14|30）。 */
+export interface AiTrendResponse {
+  /** 时间窗天数（7 / 14 / 30）。 */
+  window: number;
+  /** ISO-8601 date，起始日（含）。 */
+  from: string;
+  /** ISO-8601 date，结束日（含，今日）。 */
+  to: string;
+  /** 固定 4 槽 metrics key。 */
+  metrics: string[];
+  /** 按 key 索引的 series；diet 永远空数组。 */
+  series: Record<string, MetricSeriesDto>;
+  /** ISO-8601 datetime with offset。 */
+  generatedAt: string;
+}
+
+// ----------------------------------------------------------------------
 // Daily Report 模块类型（spec §08-daily-report-design §6 + 后端 Daily*Record）
 // ----------------------------------------------------------------------
 
