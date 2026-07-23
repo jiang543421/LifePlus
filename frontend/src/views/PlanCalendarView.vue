@@ -113,44 +113,76 @@ function timeLabel(ev: PlanListItem): string {
       <el-button type="primary" data-testid="new-plan" @click="openCreate">+ 新建事件</el-button>
     </header>
 
-    <div v-if="store.loading" class="state">加载中…</div>
-
-    <CalendarMonth
-      :year="year"
-      :month="month"
-      :events="events"
-      :selected-date="selectedDate"
-      @prev="goPrev"
-      @next="goNext"
-      @today="goToday"
-      @select="onSelectDay"
-    />
-
-    <section class="day-panel" data-testid="day-panel">
-      <h2 class="day-title">{{ selectedDate }} 的事件</h2>
-      <div v-if="selectedEvents.length === 0" class="state empty" data-testid="day-empty">
-        当天没有事件
+    <!-- v1.2.6 #2：首次加载骨架屏（loading=true && list===null）。
+         refresh 阶段 list 仍保留旧数据，条件自动回落 → 真实 CalendarMonth + day-panel。
+         原实现 line 116 "加载中…" 与 CalendarMonth 是两条独立分支，会出现
+         "加载中…" + 空日历同时显示，本调整连同修复该双重显示 bug。 -->
+    <template v-if="store.loading && store.list === null">
+      <div class="plan-calendar-view__skeleton" data-testid="plan-calendar-skeleton">
+        <div class="plan-calendar-view__skeleton-header" data-testid="plan-calendar-skeleton-header">
+          <el-skeleton-item variant="text" style="width: 38%; height: 22px;" />
+          <el-skeleton-item variant="rect" style="width: 64px; height: 28px;" />
+        </div>
+        <div class="plan-calendar-view__skeleton-weekdays">
+          <el-skeleton-item
+            v-for="w in 7"
+            :key="w"
+            variant="text"
+            style="height: 16px;"
+            data-testid="plan-calendar-skeleton-weekday"
+          />
+        </div>
+        <div class="plan-calendar-view__skeleton-grid">
+          <div
+            v-for="n in 42"
+            :key="n"
+            class="plan-calendar-view__skeleton-cell"
+            data-testid="plan-calendar-skeleton-day-cell"
+          >
+            <el-skeleton-item variant="text" style="width: 36%;" />
+            <el-skeleton-item variant="text" style="width: 50%;" />
+          </div>
+        </div>
       </div>
-      <ul v-else class="event-list" data-testid="event-list">
-        <li
-          v-for="ev in selectedEvents"
-          :key="ev.id"
-          class="event-row"
-          data-testid="event-row"
-          @click="openDetail(ev.id)"
-        >
-          <el-tag
-            v-if="ev.allDay === PlanAllDayValue.ALL_DAY"
-            type="success"
-            size="small"
-            class="allday-tag"
-          >全天</el-tag>
-          <span class="time">{{ timeLabel(ev) }}</span>
-          <span class="title" :title="ev.title">{{ ev.title }}</span>
-          <span v-if="ev.location" class="location">📍 {{ ev.location }}</span>
-        </li>
-      </ul>
-    </section>
+    </template>
+    <template v-else>
+      <CalendarMonth
+        :year="year"
+        :month="month"
+        :events="events"
+        :selected-date="selectedDate"
+        @prev="goPrev"
+        @next="goNext"
+        @today="goToday"
+        @select="onSelectDay"
+      />
+
+      <section class="day-panel" data-testid="day-panel">
+        <h2 class="day-title">{{ selectedDate }} 的事件</h2>
+        <div v-if="selectedEvents.length === 0" class="state empty" data-testid="day-empty">
+          当天没有事件
+        </div>
+        <ul v-else class="event-list" data-testid="event-list">
+          <li
+            v-for="ev in selectedEvents"
+            :key="ev.id"
+            class="event-row"
+            data-testid="event-row"
+            @click="openDetail(ev.id)"
+          >
+            <el-tag
+              v-if="ev.allDay === PlanAllDayValue.ALL_DAY"
+              type="success"
+              size="small"
+              class="allday-tag"
+            >全天</el-tag>
+            <span class="time">{{ timeLabel(ev) }}</span>
+            <span class="title" :title="ev.title">{{ ev.title }}</span>
+            <span v-if="ev.location" class="location">📍 {{ ev.location }}</span>
+          </li>
+        </ul>
+      </section>
+    </template>
 
     <EventDialog
       v-model="dialogOpen"
@@ -230,5 +262,39 @@ function timeLabel(ev: PlanListItem): string {
 .location {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+/* v1.2.6 #2：PlanCalendarView loading skeleton 样式（与真实 .calendar-month 视觉对齐）。
+   容器 padding / weekgrid gap 与真实组件一致，让"骨架 → 真实"切换不抖动。 */
+.plan-calendar-view__skeleton {
+  background: var(--el-fill-color-blank);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 16px;
+}
+.plan-calendar-view__skeleton-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.plan-calendar-view__skeleton-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+}
+.plan-calendar-view__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.plan-calendar-view__skeleton-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 72px;
+  padding: 6px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
 }
 </style>

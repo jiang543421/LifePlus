@@ -192,4 +192,59 @@ describe('PlanCalendarView / 新建事件', () => {
     expect(showAuthError).toHaveBeenCalledWith(1001);
     expect(vi.mocked(planApi.create).mock.calls.length).toBeGreaterThan(0);
   });
+
+  // ---- v1.2.6 #2：PlanCalendarView loading skeleton ----
+
+  it('首次加载（loading && list=null）→ 渲染 skeleton 替代旧「加载中…」', async () => {
+    // 让 planApi.list 永不 resolve → store.loading=true, store.list=null
+    vi.mocked(planApi.list).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    const skel = w.find('[data-testid="plan-calendar-skeleton"]');
+    expect(skel.exists()).toBe(true);
+    // 旧「加载中…」文字应不再出现
+    expect(w.text()).not.toContain('加载中…');
+  });
+
+  it('skeleton 含 header + 7 周 + 6×7 day-cell 网格', async () => {
+    vi.mocked(planApi.list).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    expect(w.find('[data-testid="plan-calendar-skeleton-header"]').exists()).toBe(true);
+    // 7 个 weekday 段
+    const weekdays = w.findAll('[data-testid="plan-calendar-skeleton-weekday"]');
+    expect(weekdays).toHaveLength(7);
+    // 42 个 day-cell（6 周 × 7 列）
+    const cells = w.findAll('[data-testid="plan-calendar-skeleton-day-cell"]');
+    expect(cells).toHaveLength(42);
+  });
+
+  it('首次加载（loading）时不渲染真实 CalendarMonth 与 day-panel（避免双重显示 bug）', async () => {
+    // 原实现 line 116-127：v-if="loading" + <CalendarMonth> 是两条独立分支，
+    // 会同时显示"加载中…"和空日历。本测试锁定新行为：loading 时只渲染 skeleton。
+    vi.mocked(planApi.list).mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await flushPromises();
+
+    expect(w.find('[data-testid="calendar-month"]').exists()).toBe(false);
+    expect(w.find('[data-testid="day-panel"]').exists()).toBe(false);
+  });
+
+  it('refresh 阶段（loading=true && list 已有）→ 不渲染 skeleton，保留真实日历', async () => {
+    // 首次加载完成
+    vi.mocked(planApi.list).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: MONTH_QUERY_SIZE });
+    const w = await mountView();
+    await flushPromises();
+    const store = usePlanStore();
+    expect(store.list).not.toBeNull();
+
+    // 模拟 refresh：loading=true, list 仍保留（即使 []）
+    store.$patch({ loading: true, list: [] });
+    await flushPromises();
+
+    expect(w.find('[data-testid="plan-calendar-skeleton"]').exists()).toBe(false);
+    expect(w.find('[data-testid="calendar-month"]').exists()).toBe(true);
+  });
 });
